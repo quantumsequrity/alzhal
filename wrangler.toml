@@ -1,0 +1,19 @@
+name = "consumer-truth"
+main = ".open-next/worker.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[r2_buckets]]
+bucket_name = "consumer-truth-audio"
+binding = "AUDIO_BUCKET"
+
+[vars]
+NODE_ENV = "production"
+NEXT_PUBLIC_SUPABASE_URL = "https://rxparbkaszwcvikvowsr.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4cGFyYmthc3p3Y3Zpa3Zvd3NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwMzU3MzcsImV4cCI6MjA4NjYxMTczN30.6cKYD2tB8EBRz6EK3LDktc7aiiZSf9wlPMyjYRLKeFg"
+TWILIO_WHATSAPP_NUMBER = "whatsapp:+14155238886"
+NEXT_PUBLIC_APP_URL = "https://your-worker.workers.dev"

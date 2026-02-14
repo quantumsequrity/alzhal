@@ -1,0 +1,50 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Next.js
+.next/
+out/
+build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local Env Files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel
+
+# Cloudflare
+.open-next/
+.wrangler/
+
+# Claude Code
+.claude/
+
+# IGNORE LARGE DATASETS (Prevents crash)
+*.csv
+*.zip
+*.tar.gz
+
+# Stray test images
+*.webp
+*.avif
+
+# Build artifacts
+tsconfig.tsbuildinfo
