@@ -1,6 +1,7 @@
 import { analyzeImage, analyzeIngredientBatch, translateContent } from './gemini'
 import { supabase } from './supabase'
-import { getOfficialData } from './external-data'
+import { getEnrichedDataForBatch, formatEnrichedDataForPrompt, EnrichedIngredientData } from './external-data'
+import { lookupIngredientsContext, lookupProductContext } from './product-data'
 
 export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: string, language: string = 'English') {
     // 1. Analyze Image with Gemini Vision
@@ -51,7 +52,7 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
         .in('name', ingredientNames)
 
     const cachedMap = new Map((cachedIngredients || []).map((i) => [i.name.toLowerCase(), i]))
-    const needsAnalysis = []
+    const needsAnalysis: string[] = []
 
     for (const item of productData.ingredients) {
         if (!cachedMap.has(item.name.toLowerCase())) {
@@ -59,20 +60,57 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
         }
     }
 
-    // B. Call Gemini in ONE Batch for all missing items
+    // B. Fetch CSV + external API data in PARALLEL (before Gemini)
+    let csvContext = ''
+    let enrichedData: Record<string, EnrichedIngredientData> = {}
+    let externalApiContext = ''
+
+    if (needsAnalysis.length > 0) {
+        const [csvResult, enrichedResult] = await Promise.allSettled([
+            // CSV lookup
+            (async () => {
+                const [productCsvContext, ingredientCsvContext] = await Promise.all([
+                    lookupProductContext(productData.product_name),
+                    lookupIngredientsContext(needsAnalysis),
+                ])
+                const parts: string[] = []
+                if (productCsvContext) parts.push(productCsvContext)
+                if (ingredientCsvContext) parts.push(ingredientCsvContext)
+                return parts.length > 0 ? parts.join('\n\n') : ''
+            })(),
+            // External API enrichment (PubChem, CAS, FDA adverse events + recalls)
+            getEnrichedDataForBatch(needsAnalysis, productCategory),
+        ])
+
+        if (csvResult.status === 'fulfilled' && csvResult.value) {
+            csvContext = csvResult.value
+            console.log(`[Analysis] CSV data found: ${csvContext.length} chars of additional context`)
+        } else if (csvResult.status === 'rejected') {
+            console.warn('[Analysis] CSV lookup failed (non-blocking):', csvResult.reason)
+        }
+
+        if (enrichedResult.status === 'fulfilled') {
+            enrichedData = enrichedResult.value
+            externalApiContext = formatEnrichedDataForPrompt(enrichedData)
+            console.log(`[Analysis] External API data: ${Object.keys(enrichedData).length} ingredients enriched`)
+        } else {
+            console.warn('[Analysis] External API enrichment failed (non-blocking):', enrichedResult.reason)
+        }
+    }
+
+    // C. Call Gemini in ONE Batch with enriched context
     let batchResults: Record<string, any> = {}
     if (needsAnalysis.length > 0) {
         console.log(`[Analysis] Batch analyzing ${needsAnalysis.length} new ingredients for ${productCategory} product...`)
-        const rawBatchResults = await analyzeIngredientBatch(needsAnalysis, productCategory)
-        
+        const rawBatchResults = await analyzeIngredientBatch(needsAnalysis, productCategory, csvContext, externalApiContext)
+
         // Normalize batch results keys to lowercase for robust matching
-        // Gemini might return "Citric Acid" or "citric acid", we want to match "Citric Acid" input
         for (const [key, value] of Object.entries(rawBatchResults)) {
             batchResults[key.toLowerCase()] = value
         }
     }
 
-    // C. Merge Results & Add Deterministic Data
+    // D. Merge Results — use pre-fetched enriched data (no per-ingredient API calls)
     for (const item of productData.ingredients) {
         const name = item.name
         const lowerName = name.toLowerCase()
@@ -84,8 +122,8 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
             analysis = cachedMap.get(lowerName)
         } else {
             // Get from batch result using lowercase key
-            const analysisData = batchResults[lowerName] 
-            
+            const analysisData = batchResults[lowerName]
+
             // Check if we actually got data. If not, use fallback but DO NOT SAVE to DB.
             const isValidAnalysis = !!analysisData
             const finalAnalysisData = analysisData || {
@@ -94,17 +132,24 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
                 concerns: ["Could not verify in batch"]
             }
 
-            // 2. Deterministic Check (CAS/FDA/EPA) - Still run per item but it's fast/free
-            let officialData = { cas_number: "Unknown", fda_reports: 0, epa_link: null as string | null };
-            try {
-                officialData = await getOfficialData(name, productCategory);
-            } catch (e) { console.error('Official Data Check failed', e) }
+            // 2. Use pre-fetched enriched data (already fetched in parallel before Gemini)
+            const officialData = enrichedData[name] || {
+                cas_number: "Unknown",
+                fda_reports: 0,
+                epa_link: null,
+                pubchem: null,
+                fda_recalls: null,
+                sources_checked: [],
+            }
 
             let concerns = finalAnalysisData.concerns || []
             let safetyVerdict = finalAnalysisData.safety_verdict || "Caution"
 
             if (officialData.fda_reports > 0) {
-                concerns.push(`⚠️ FDA Adverse Events: ${officialData.fda_reports} reports filed.`)
+                concerns.push(`FDA Adverse Events: ${officialData.fda_reports} reports filed.`)
+            }
+            if (officialData.fda_recalls && officialData.fda_recalls.total_recalls > 0) {
+                concerns.push(`FDA Recalls: ${officialData.fda_recalls.total_recalls} recall(s) found.`)
             }
             if (officialData.cas_number !== "Unknown") {
                  finalAnalysisData.chemical_formula = `${finalAnalysisData.chemical_formula || ''} (CAS: ${officialData.cas_number})`
@@ -119,7 +164,7 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
                 raw_materials: finalAnalysisData.raw_materials,
                 common_uses: finalAnalysisData.common_uses,
                 fda_status: finalAnalysisData.regulatory_status?.us_fda || "N/A",
-                eu_status: finalAnalysisData.regulatory_status?.eu_cosing || "N/A",
+                eu_status: finalAnalysisData.regulatory_status?.eu_efsa || finalAnalysisData.regulatory_status?.eu_cosing || "N/A",
                 who_status: finalAnalysisData.regulatory_status?.who_iarc || "N/A",
                 banned_in: safetyVerdict === 'Banned' ? (finalAnalysisData.banned_countries || ['Check Sources']) : [],
                 safe_limit: finalAnalysisData.regulatory_status?.india_fssai || "N/A",
@@ -128,7 +173,6 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
             }
 
             // ONLY Save to DB if we actually got a valid analysis from Gemini
-            // We don't want to fill the DB with "Analysis pending" placeholders
             if (isValidAnalysis) {
                 const { data: savedIngredient } = await supabase
                     .from('ingredients')
@@ -137,40 +181,55 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
                     .single()
                 analysis = savedIngredient || analysisToSave
             } else {
-                // Return the fallback data to the user, but don't cache it
                 console.warn(`Skipping DB save for ${name} (Batch analysis failed)`)
                 analysis = analysisToSave
             }
 
             // Enrich with Gemini's structured data for rich UI display
-            // (these aren't stored in DB but are needed by the frontend)
             analysis.regulatory_status = finalAnalysisData.regulatory_status
             analysis.safety_limits = finalAnalysisData.safety_limits
+            analysis.safety_limits_per_100g = finalAnalysisData.safety_limits_per_100g
+            analysis.how_its_made = finalAnalysisData.how_its_made
             analysis.sources_cited = finalAnalysisData.sources_cited || []
             analysis.banned_countries = finalAnalysisData.banned_countries || []
+            analysis.restricted_countries = finalAnalysisData.restricted_countries || []
             analysis.epa_link = officialData.epa_link
+            analysis.pubchem_url = officialData.pubchem?.pubchem_url || null
             analysis.limit_exceeded = finalAnalysisData.limit_exceeded || null
             analysis.regional_ban_conflicts = finalAnalysisData.regional_ban_conflicts || []
-        }
-
-        // Translate if needed
-        if (language.toLowerCase() !== 'english' && analysis) {
-            try {
-                const textToTranslate = `
-           Explanation: ${analysis.simple_name}
-           Concerns: ${Array.isArray(analysis.concerns) ? analysis.concerns.join(', ') : analysis.concerns}
-         `
-                const translatedText = await translateContent(textToTranslate, language)
-                analysis.translated_text = translatedText
-            } catch (e) {
-                console.error('Translation failed', e)
-            }
+            analysis.sources_checked = officialData.sources_checked || []
         }
 
         analyzedIngredients.push({
             ...item,
             analysis,
         })
+    }
+
+    // Batch translate all ingredients in ONE Gemini call instead of per-ingredient
+    if (language.toLowerCase() !== 'english' && analyzedIngredients.length > 0) {
+        try {
+            const translationInput = analyzedIngredients
+                .filter(item => item.analysis)
+                .map((item, i) => `[${i}] ${item.analysis.simple_name || ''} | ${Array.isArray(item.analysis.concerns) ? item.analysis.concerns.join(', ') : (item.analysis.concerns || '')}`)
+                .join('\n')
+
+            const translated = await translateContent(translationInput, language)
+            const lines = translated.split('\n')
+
+            for (const line of lines) {
+                const match = line.match(/^\[(\d+)\]\s*(.*)/)
+                if (match) {
+                    const idx = parseInt(match[1])
+                    if (idx >= 0 && idx < analyzedIngredients.length && analyzedIngredients[idx].analysis) {
+                        analyzedIngredients[idx].analysis.translated_text = match[2].trim()
+                    }
+                }
+            }
+            console.log(`[Analysis] Batch translated ${lines.length} ingredients to ${language}`)
+        } catch (e) {
+            console.warn('[Analysis] Batch translation failed, returning English:', (e as Error).message)
+        }
     }
 
     return {

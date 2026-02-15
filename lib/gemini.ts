@@ -1,5 +1,4 @@
 import { GoogleGenerativeAI, Part } from '@google/generative-ai'
-import { GoogleGenAI } from '@google/genai'
 
 // sharp removed — AVIF/HEIC images are rejected with a user-friendly message on Cloudflare
 const sharp: any = null
@@ -14,7 +13,6 @@ if (!apiKey) {
 }
 
 const genAI = new GoogleGenerativeAI(apiKey || '')
-const genAINew = new GoogleGenAI({ apiKey: apiKey || '' })
 
 // Use Gemini 2.0 Flash for speed and multimodal capabilities
 export const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
@@ -133,7 +131,7 @@ export async function analyzeImage(imageBuffer: Buffer, mimeType: string) {
 // Max ingredients per batch to avoid Gemini output token truncation
 const BATCH_CHUNK_SIZE = 8
 
-export async function analyzeIngredientBatch(ingredientNames: string[], productCategory: string = 'food') {
+export async function analyzeIngredientBatch(ingredientNames: string[], productCategory: string = 'food', additionalContext: string = '', externalApiData: string = '') {
   const categoryContext = {
     food: 'This is a FOOD product. Prioritize FSSAI, FDA GRAS, Codex Alimentarius, EU food additive regulations.',
     cosmetic: 'This is a COSMETIC/PERSONAL CARE product (shampoo, soap, cream, etc.). Prioritize EU CosIng, BIS IS 4707, FDA cosmetic regulations, IFRA standards.',
@@ -154,9 +152,9 @@ export async function analyzeIngredientBatch(ingredientNames: string[], productC
   for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
     const chunk = chunks[chunkIndex]
 
-    // Rate limit protection between chunks
+    // Rate limit protection between chunks (3s gap to avoid 429s)
     if (chunkIndex > 0) {
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      await new Promise(resolve => setTimeout(resolve, 3000))
     }
 
     const prompt = `
@@ -166,38 +164,51 @@ PRODUCT CONTEXT: ${categoryContext[productCategory as keyof typeof categoryConte
 
 STRICT REQUIREMENT: Use ONLY data from ABSOLUTE OFFICIAL SOURCES.
 
-DATA SOURCES: BIS IS 4707, FSSAI FSS Regulations 2011, EU CosIng Database, EU Regulation (EC) No 1223/2009 & No 1333/2008, FDA CFR 21 & GRAS List, EPA SCIL, IFRA Standards, WHO/IARC, Codex Alimentarius.
+DATA SOURCES: BIS IS 4707, FSSAI FSS Regulations 2011, EU CosIng Database, EU Regulation (EC) No 1223/2009 & No 1333/2008, FDA CFR 21 & GRAS List, EPA SCIL, IFRA Standards, WHO/IARC, Codex Alimentarius, UK FSA, FSANZ (Australia/New Zealand), Health Canada, Japan MHLW, Nordic food regulations.
 
+AUDIENCE: Explain everything in very simple language for people who may have never been to school. Use analogies to everyday things they know (cooking, nature, household items).
+${externalApiData ? `\nVERIFIED API DATA (from PubChem, CAS, FDA databases — use this as ground truth where available):\n${externalApiData}\n` : ''}
 ANALYZE THESE ${chunk.length} INGREDIENTS: ${JSON.stringify(chunk.map(sanitizeIngredientName))}
-
+${additionalContext ? `\nREFERENCE DATA (from FDA/Open Food Facts database - use as supplementary context):\n${additionalContext}\n` : ''}
 Return a JSON Object where KEY = ingredient name, VALUE = analysis object:
 
 {
   "Ingredient Name": {
-    "simple_name": "Plain language explanation",
+    "simple_name": "Explain like you're talking to someone who never went to school. Use analogies to everyday things. Example: 'A type of salt used to keep food fresh, like how we add salt to pickles'",
+    "how_its_made": "In 2-3 sentences, how this is manufactured. Start with raw material, then process. Example: 'Made from corn starch. Factories use bacteria to turn it into acid, similar to how yogurt is made from milk.'",
     "chemical_formula": "Formula or 'N/A'",
     "cas_number": "CAS number if known",
-    "raw_materials": "Source material",
+    "raw_materials": ["List of raw materials, e.g. 'Corn starch', 'Aspergillus niger bacteria'"],
     "common_uses": ["3 common products"],
     "regulatory_status": {
       "india_fssai": "FSSAI status or 'Data not available'",
-      "eu_cosing": "EU status or 'Data not available'",
+      "eu_efsa": "EU status or 'Data not available'",
       "us_fda": "FDA status or 'Data not available'",
-      "who_iarc": "WHO/IARC classification or 'Data not available'"
+      "who_iarc": "WHO/IARC classification or 'Data not available'",
+      "uk_fsa": "UK FSA status or 'Data not available'",
+      "australia_nz_fsanz": "FSANZ status or 'Data not available'",
+      "canada_hc": "Health Canada status or 'Data not available'",
+      "japan_mhlw": "Japan MHLW status or 'Data not available'",
+      "nordic_countries": "Nordic regulations status or 'Data not available'"
     },
-    "safety_limits": {
-      "fssai_max": "Max % India or 'Not specified'",
-      "eu_max": "Max % EU or 'Not specified'",
-      "fda_max": "Max % USA or 'Not specified'"
+    "safety_limits_per_100g": {
+      "india_fssai": "e.g. '0.015g per 100g' or 'Not specified'",
+      "eu": "e.g. '0.02g per 100g' or 'Not specified'",
+      "us_fda": "e.g. '0.1g per 100g' or 'Not specified'",
+      "codex": "Codex Alimentarius limit or 'Not specified'",
+      "australia_nz": "FSANZ limit or 'Not specified'",
+      "uk": "UK limit or 'Not specified'",
+      "plain_english": "One simple sentence. Example: 'For every 100g of food, only a tiny pinch (0.015g) of this is allowed in India'"
     },
     "safety_verdict": "SAFE/CAUTION/AVOID/BANNED",
     "concerns": ["Only official source findings"],
-    "banned_countries": ["Countries where banned"],
+    "banned_countries": ["Countries where banned — include AU/NZ, UK, Nordic, Japan, Canada, South Korea if applicable"],
+    "restricted_countries": ["Countries with specific limits (not outright banned) — e.g. 'EU: max 0.02g/100g'"],
     "sources_cited": ["Specific regulation references"],
     "limit_exceeded": {
-      "fssai": { "max_allowed": "percentage or amount", "typical_use": "typical % in this product type", "exceeded": true/false },
-      "eu": { "max_allowed": "percentage or amount", "typical_use": "typical %", "exceeded": true/false },
-      "fda": { "max_allowed": "percentage or amount", "typical_use": "typical %", "exceeded": true/false }
+      "fssai": { "max_allowed": "amount per 100g", "typical_use": "typical amount in this product type", "exceeded": true/false },
+      "eu": { "max_allowed": "amount per 100g", "typical_use": "typical amount", "exceeded": true/false },
+      "fda": { "max_allowed": "amount per 100g", "typical_use": "typical amount", "exceeded": true/false }
     },
     "regional_ban_conflicts": ["e.g. 'Legal in India but banned in EU (Annex II)'"]
   }
@@ -211,6 +222,8 @@ RULES:
 5. Return ONLY valid JSON, no markdown code blocks, no explanation text.
 6. limit_exceeded: set to null if no official limits exist. Only set exceeded=true if the typical use level in this product type exceeds the regulatory max.
 7. regional_ban_conflicts: list cases where the ingredient is legal in one major market but banned/restricted in another. Empty array if no conflicts.
+8. simple_name MUST be in extremely simple language — imagine explaining to your grandmother who never went to school.
+9. safety_limits_per_100g.plain_english MUST be a single sentence a child could understand.
 `
 
     try {
@@ -240,49 +253,68 @@ RULES:
   return allResults
 }
 
-export async function analyzeIngredient(ingredientName: string) {
+export async function analyzeIngredient(ingredientName: string, externalApiData: string = '') {
   // Add a small initial delay to prevent instant burst
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   const prompt = `
-⚠️ CRITICAL INSTRUCTION: You are an Official Regulatory Compliance Auditor.
+You are an Official Regulatory Compliance Auditor performing a DEEP-DIVE analysis.
 
 STRICT REQUIREMENT: You MUST ONLY use data from these ABSOLUTE OFFICIAL SOURCES. Any answer without official source citation is REJECTED.
 
-📚 MANDATORY DATA SOURCES (In Order of Priority):
+AUDIENCE: Explain everything in very simple language for people who may have never been to school. Use analogies to everyday things (cooking, nature, household items).
 
-🇮🇳 INDIA (Bureau of Indian Standards - BIS):
-   - IS 4707 (Cosmetics Standards) - Parts 1 & 2
+MANDATORY DATA SOURCES (In Order of Priority):
+
+INDIA:
+   - BIS IS 4707 (Cosmetics Standards) - Parts 1 & 2
    - FSSAI Food Safety Standards (FSS) Regulations 2011
    - FSSAI Compendium - "Substances added to food"
    - CDSCO (Central Drugs Standard Control Organization)
 
-🇪🇺 EUROPEAN UNION:
+EUROPEAN UNION:
    - EU CosIng Database (Cosmetic Ingredients)
    - Annex II: Prohibited Substances (BANNED)
    - Annex III: Restricted Substances (with limits)
    - Regulation (EC) No 1223/2009
    - EU Food Additives Regulation (EC) No 1333/2008
 
-🇺🇸 UNITED STATES:
+UNITED STATES:
    - FDA Code of Federal Regulations (CFR 21)
    - FDA GRAS (Generally Recognized As Safe) List
    - EPA Safer Chemical Ingredients List (SCIL)
    - EPA CompTox Dashboard
 
-🌍 WORLD HEALTH ORGANIZATION:
+UNITED KINGDOM:
+   - UK FSA (Food Standards Agency) regulations
+
+AUSTRALIA / NEW ZEALAND:
+   - FSANZ (Food Standards Australia New Zealand)
+
+CANADA:
+   - Health Canada regulations
+
+JAPAN:
+   - MHLW (Ministry of Health, Labour and Welfare)
+
+NORDIC COUNTRIES:
+   - Nordic food/cosmetic regulations
+
+WORLD HEALTH ORGANIZATION:
    - WHO/ILO International Chemical Safety Cards (ICSC)
    - IARC (International Agency for Research on Cancer) Classifications
    - Codex Alimentarius (Food Standards)
-
+${externalApiData ? `\nVERIFIED API DATA (from PubChem, CAS, FDA databases — use this as ground truth where available):\n${externalApiData}\n` : ''}
 ANALYZE THIS INGREDIENT: "${sanitizeIngredientName(ingredientName)}"
 
 OUTPUT FORMAT (JSON):
 {
-  "simple_name": "One sentence in simple Hindi/English (layman terms)",
+  "simple_name": "Explain like talking to someone who never went to school. Use analogies. Example: 'A type of salt used to keep food fresh, like how we add salt to pickles'",
+  "health_impact_layman": "Explain health effects in very simple language. Example: 'Eating too much of this can make your stomach upset. Some scientists think eating a lot over many years might not be good for your body.'",
+  "how_its_made": "In 5-6 sentences, explain how this is manufactured. Start with raw materials, then each step. Example: 'It starts with corn. The corn is ground into a fine powder called starch. Then special tiny living things called bacteria are added to the starch. These bacteria eat the starch and turn it into acid, similar to how milk turns into yogurt. The acid is then cleaned and dried into a white powder.'",
   "chemical_formula": "Molecular formula or 'Not applicable'",
   "cas_number": "CAS Registry Number if available",
-  "raw_materials": "Natural source or synthetic process",
+  "raw_materials": ["List of raw materials, e.g. 'Corn starch', 'Aspergillus niger bacteria'"],
   "common_uses": ["List 3-5 common products where this is used"],
   "regulatory_status": {
     "india_bis": "BIS IS 4707 status OR 'Data not available'",
@@ -290,31 +322,43 @@ OUTPUT FORMAT (JSON):
     "eu_cosing": "Annex status (Approved/Annex II Prohibited/Annex III Restricted) OR 'Data not available'",
     "us_fda": "FDA CFR 21 status OR 'Data not available'",
     "us_epa": "EPA SCIL rating OR 'Data not available'",
-    "who_iarc": "WHO/IARC group (1/2A/2B/3) OR 'Data not available'"
+    "who_iarc": "WHO/IARC group (1/2A/2B/3) OR 'Data not available'",
+    "uk_fsa": "UK FSA status OR 'Data not available'",
+    "australia_nz_fsanz": "FSANZ status OR 'Data not available'",
+    "canada_hc": "Health Canada status OR 'Data not available'",
+    "japan_mhlw": "Japan MHLW status OR 'Data not available'",
+    "nordic_countries": "Nordic regulations status OR 'Data not available'"
   },
-  "safety_limits": {
-    "fssai_max": "Maximum allowed % in India OR 'Not specified'",
-    "eu_max": "Maximum allowed % in EU OR 'Not specified'",
-    "fda_max": "Maximum allowed % in USA OR 'Not specified'"
+  "safety_limits_per_100g": {
+    "india_fssai": "e.g. '0.015g per 100g' or 'Not specified'",
+    "eu": "e.g. '0.02g per 100g' or 'Not specified'",
+    "us_fda": "e.g. '0.1g per 100g' or 'Not specified'",
+    "codex": "Codex Alimentarius limit or 'Not specified'",
+    "australia_nz": "FSANZ limit or 'Not specified'",
+    "uk": "UK limit or 'Not specified'",
+    "plain_english": "One simple sentence. Example: 'For every 100g of food, only a tiny pinch (0.015g) of this is allowed in India'"
   },
   "safety_verdict": "SAFE / CAUTION / AVOID / BANNED",
   "concerns": [
     "ONLY list if found in official sources above",
     "Format: 'Source: Specific finding (e.g., EU Annex II: Carcinogenic)'"
   ],
-  "banned_countries": ["List countries where completely banned"],
+  "banned_countries": ["List countries where completely banned — include AU/NZ, UK, Nordic, Japan, Canada, South Korea"],
+  "restricted_countries": ["Countries with specific limits — e.g. 'EU: max 0.02g/100g'"],
   "sources_cited": [
     "MUST cite specific documents (e.g., 'EU CosIng Annex II', 'FSSAI FSS Regulation 2011, Table 3')",
     "If no official source found, write 'No regulatory data found'"
   ]
 }
 
-⚠️ STRICT RULES:
+STRICT RULES:
 1. If you cannot find data in the official sources listed above, write "Data not available" - DO NOT guess or use general knowledge.
 2. NEVER use phrases like "generally safe", "may cause", "some studies suggest" - only cite official regulations.
 3. safety_verdict can ONLY be based on official banned/restricted lists, not general opinions.
 4. sources_cited MUST include specific regulation numbers or document names.
 5. If the ingredient has ZERO official regulatory data, mark safety_verdict as "CAUTION" with concerns: ["No official safety data found in BIS/FSSAI/EU/FDA databases"]
+6. simple_name and health_impact_layman MUST use extremely simple language — imagine explaining to your grandmother who never went to school.
+7. how_its_made should tell a story of how it's manufactured, step by step, in simple words.
 
 ANALYZE NOW.
   `
@@ -344,92 +388,6 @@ ANALYZE NOW.
       sources_cited: ["Verification failed"]
     }
   }
-}
-
-// WAV header for raw PCM from Gemini TTS (16-bit, 24kHz, mono)
-function createWavBuffer(pcmData: Buffer): Buffer {
-  const sampleRate = 24000
-  const numChannels = 1
-  const bitsPerSample = 16
-  const byteRate = sampleRate * numChannels * (bitsPerSample / 8)
-  const blockAlign = numChannels * (bitsPerSample / 8)
-  const dataSize = pcmData.length
-  const header = Buffer.alloc(44)
-  header.write('RIFF', 0)
-  header.writeUInt32LE(dataSize + 36, 4)
-  header.write('WAVE', 8)
-  header.write('fmt ', 12)
-  header.writeUInt32LE(16, 16)
-  header.writeUInt16LE(1, 20)
-  header.writeUInt16LE(numChannels, 22)
-  header.writeUInt32LE(sampleRate, 24)
-  header.writeUInt32LE(byteRate, 28)
-  header.writeUInt16LE(blockAlign, 32)
-  header.writeUInt16LE(bitsPerSample, 34)
-  header.write('data', 36)
-  header.writeUInt32LE(dataSize, 40)
-  return Buffer.concat([header, pcmData])
-}
-
-const MAX_TTS_TEXT_LENGTH = 1500
-
-export async function generateVoiceResponse(
-  text: string,
-  language: string = 'English'
-): Promise<{ audioBuffer: Buffer; mimeType: string } | null> {
-  const ttsText = text.length > MAX_TTS_TEXT_LENGTH
-    ? text.slice(0, MAX_TTS_TEXT_LENGTH) + '...'
-    : text
-
-  const prompt = `Read the following product safety summary aloud in ${language}. Speak naturally and clearly:\n\n${ttsText}`
-
-  const TTS_TIMEOUT_MS = 35_000 // 35 second timeout
-  const MAX_RETRIES = 2
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const ttsPromise = genAINew.models.generateContent({
-        model: 'gemini-2.5-flash-preview-tts',
-        contents: [{ parts: [{ text: prompt }] }],
-        config: {
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
-            },
-          },
-        },
-      })
-
-      // Race against timeout
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('TTS timeout')), TTS_TIMEOUT_MS)
-      )
-      const response = await Promise.race([ttsPromise, timeoutPromise])
-
-      const inlineData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData
-      if (!inlineData?.data) {
-        console.warn('[Gemini TTS] No audio data in response')
-        return null
-      }
-
-      const pcmBuffer = Buffer.from(inlineData.data, 'base64')
-      const wavBuffer = createWavBuffer(pcmBuffer)
-
-      return { audioBuffer: wavBuffer, mimeType: 'audio/wav' }
-    } catch (error: any) {
-      const is429 = error.message?.includes('429') || error.status === 429
-      if (is429 && attempt < MAX_RETRIES) {
-        console.warn(`[Gemini TTS] Rate limited, retrying in ${2000 * (attempt + 1)}ms...`)
-        await new Promise(r => setTimeout(r, 2000 * (attempt + 1)))
-        continue
-      }
-      console.error('[Gemini TTS] Audio generation failed:', error.message || error)
-      return null
-    }
-  }
-
-  return null
 }
 
 export async function translateContent(content: string, targetLanguage: string) {
