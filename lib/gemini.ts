@@ -1,11 +1,19 @@
 import { GoogleGenerativeAI, Part } from '@google/generative-ai'
 
-// Dynamic import of sharp (may not be available on Cloudflare Workers)
+// sharp loaded lazily at first use (unavailable on Cloudflare Workers)
 let sharp: any = null
-try {
-  sharp = require('sharp')
-} catch {
-  // sharp not available (e.g. Cloudflare Workers) — AVIF images sent raw to Gemini
+let sharpLoaded = false
+
+async function getSharp(): Promise<any> {
+  if (sharpLoaded) return sharp
+  sharpLoaded = true
+  try {
+    // Dynamic import avoids bundler resolution at build time
+    sharp = (await import(/* webpackIgnore: true */ 'sharp')).default
+  } catch {
+    // sharp not available (e.g. Cloudflare Workers) — AVIF images sent raw to Gemini
+  }
+  return sharp
 }
 
 const apiKey = process.env.GEMINI_API_KEY
@@ -99,10 +107,13 @@ export async function analyzeImage(imageBuffer: Buffer, mimeType: string) {
   // Convert AVIF to JPEG using sharp since Gemini API doesn't support AVIF
   let finalBuffer = imageBuffer;
   let finalMimeType = mimeType;
-  if (mimeType === 'image/avif' && sharp) {
-      console.log('Converting AVIF to JPEG for Gemini API compatibility');
-      finalBuffer = await sharp(imageBuffer).jpeg({ quality: 90 }).toBuffer() as Buffer;
-      finalMimeType = 'image/jpeg';
+  if (mimeType === 'image/avif') {
+      const sharpLib = await getSharp()
+      if (sharpLib) {
+          console.log('Converting AVIF to JPEG for Gemini API compatibility');
+          finalBuffer = await sharpLib(imageBuffer).jpeg({ quality: 90 }).toBuffer() as Buffer;
+          finalMimeType = 'image/jpeg';
+      }
   }
 
   const prompt = `
