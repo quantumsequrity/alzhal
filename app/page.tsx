@@ -285,7 +285,6 @@ export default function Home() {
     const [error, setError] = useState<string | null>(null)
     const [language, setLanguage] = useState('English')
     const [showTutorial, setShowTutorial] = useState(false)
-    const [tutorialStep, setTutorialStep] = useState(0)
     const [inputMode, setInputMode] = useState<'image' | 'text' | 'voice' | 'compare'>('image')
     const [textInput, setTextInput] = useState('')
     const [compareA, setCompareA] = useState('')
@@ -500,7 +499,7 @@ export default function Home() {
                         </div>
 
                         <button
-                            onClick={() => { setShowTutorial(true); setTutorialStep(0) }}
+                            onClick={() => { setShowTutorial(true) }}
                             className="p-1.5 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition"
                             title={isHindi ? 'मदद' : 'Help'}
                         >

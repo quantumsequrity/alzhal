@@ -406,7 +406,7 @@ function FollowUpQuestion({ productName, language, scanId }: { productName: stri
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: questionText,
-                    productName,
+                    context: `Product: ${productName}`,
                     language,
                     scan_id: scanId,
                 }),

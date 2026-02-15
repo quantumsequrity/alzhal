@@ -86,22 +86,38 @@ Return ONLY valid JSON:
     const response = await result.response
     const text = response.text()
 
+    // Strip any leaked XML-like tags
+    const cleanText = text
+      .replace(/<\/?user_input>/g, '')
+      .replace(/<\/?previous_context>/g, '')
+      .replace(/<\/?conversation_history>/g, '')
+
     let parsed
     try {
-      const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim()
+      const jsonString = cleanText.replace(/```json/g, '').replace(/```/g, '').trim()
       parsed = JSON.parse(jsonString)
     } catch {
       // If JSON parsing fails, return raw text
       parsed = {
-        answer: text,
+        answer: cleanText.trim(),
         sources: [],
         related_ingredients: [],
       }
     }
 
+    // Double-check the answer field for leaked tags
+    if (parsed.answer) {
+      parsed.answer = parsed.answer
+        .replace(/<\/?user_input>/g, '')
+        .replace(/<\/?previous_context>/g, '')
+        .replace(/<\/?conversation_history>/g, '')
+        .trim()
+    }
+
     // Log question
     try {
       await supabase.from('queries').insert({
+        scan_id: scanId || null,
         question,
         question_type: 'general',
         language,

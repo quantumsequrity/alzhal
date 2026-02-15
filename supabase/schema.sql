@@ -42,7 +42,8 @@ create table scans (
   language text,
   timestamp timestamp with time zone default now(),
   ingredients_found text[],
-  response_sent boolean
+  response_sent boolean,
+  share_count integer default 0
 );
 
 -- Table 4: queries
@@ -56,7 +57,48 @@ create table queries (
   timestamp timestamp with time zone default now()
 );
 
--- Table 5: analytics
+-- Table 5: feedback
+create table feedback (
+  id uuid primary key default uuid_generate_v4(),
+  scan_id uuid references scans(id),
+  rating text not null, -- 'up' or 'down'
+  comment text,
+  created_at timestamp with time zone default now()
+);
+
+-- Table 6: conversations (follow-up chat history per scan)
+create table conversations (
+  id uuid primary key default uuid_generate_v4(),
+  scan_id uuid references scans(id),
+  role text not null, -- 'user' or 'assistant'
+  content text not null,
+  created_at timestamp with time zone default now()
+);
+
+-- Table 7: food_products (Open Food Facts / FDA data — imported from CSV)
+create table food_products (
+  id bigint generated always as identity primary key,
+  code text, -- barcode / EAN
+  product_name text,
+  brands text,
+  categories text,
+  ingredients_text text,
+  nutriscore_grade text,
+  nova_group text,
+  countries text,
+  additives_tags text,
+  allergens text
+);
+
+-- Indexes for fast lookups
+create index idx_food_products_code on food_products (code);
+create index idx_food_products_name_trgm on food_products using gin (product_name gin_trgm_ops);
+create index idx_food_products_ingredients_trgm on food_products using gin (ingredients_text gin_trgm_ops);
+
+-- Enable pg_trgm extension for trigram similarity search
+create extension if not exists pg_trgm;
+
+-- Table 8: analytics
 create table analytics (
   id uuid primary key default uuid_generate_v4(),
   date date default current_date,

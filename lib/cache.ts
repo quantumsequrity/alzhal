@@ -1,7 +1,9 @@
-// Simple in-memory cache with TTL
-// In production, use Redis or similar
+// In-memory cache with TTL.
+// On Cloudflare Workers this resets on every cold start — that's acceptable
+// since it acts as a per-request-burst optimization, not a persistence layer.
+// No setInterval timers: cleanup is done lazily on get/set to stay compatible
+// with serverless runtimes that don't support long-lived timers.
 
-// Sentinel value to distinguish cached null from cache miss
 const NULL_SENTINEL = '__NULL__' as const
 type SentinelType = typeof NULL_SENTINEL
 
@@ -12,27 +14,24 @@ interface CacheEntry<T> {
 }
 
 const MAX_CACHE_SIZE = 10000
+const CLEANUP_INTERVAL_OPS = 100 // run cleanup every N set operations
 
 class MemoryCache {
   private store: Map<string, CacheEntry<any>>
-  private cleanupTimer: ReturnType<typeof setInterval>
+  private opsSinceCleanup = 0
 
   constructor() {
     this.store = new Map()
-    // Clean expired entries every 5 minutes
-    this.cleanupTimer = setInterval(() => this.cleanup(), 5 * 60 * 1000)
-    // Ensure the timer doesn't prevent process exit
-    if (this.cleanupTimer.unref) {
-      this.cleanupTimer.unref()
-    }
-  }
-
-  destroy(): void {
-    clearInterval(this.cleanupTimer)
-    this.store.clear()
   }
 
   set<T>(key: string, value: T, ttlMs: number): void {
+    // Lazy cleanup on write path
+    this.opsSinceCleanup++
+    if (this.opsSinceCleanup >= CLEANUP_INTERVAL_OPS) {
+      this.cleanup()
+      this.opsSinceCleanup = 0
+    }
+
     // Evict oldest 20% if at capacity
     if (this.store.size >= MAX_CACHE_SIZE && !this.store.has(key)) {
       this.evictOldest()
@@ -91,24 +90,14 @@ class MemoryCache {
     for (const [key] of entries) {
       this.store.delete(key)
     }
-
-    console.log(`[Cache] Evicted ${entries.length} oldest entries (size was ${MAX_CACHE_SIZE})`)
   }
 
   private cleanup(): void {
     const now = Date.now()
-    const keysToDelete: string[] = []
-
-    this.store.forEach((entry, key) => {
+    for (const [key, entry] of this.store) {
       if (now > entry.expiresAt) {
-        keysToDelete.push(key)
+        this.store.delete(key)
       }
-    })
-
-    keysToDelete.forEach((key) => this.store.delete(key))
-
-    if (keysToDelete.length > 0) {
-      console.log(`[Cache] Cleaned up ${keysToDelete.length} expired entries`)
     }
   }
 

@@ -11,9 +11,24 @@ binding = "ASSETS"
 bucket_name = "consumer-truth-audio"
 binding = "AUDIO_BUCKET"
 
+[[d1_databases]]
+binding = "FOOD_DB"
+database_name = "consumer-truth-food"
+database_id = "55a42a68-a2fd-4653-8d82-f8947a750ebf"
+
+[[d1_databases]]
+binding = "FOOD_NUTRITION_DB"
+database_name = "consumer-truth-nutrition"
+database_id = "be4abefd-e638-4d28-bcfb-f42bdf5a139b"
+
+[[d1_databases]]
+binding = "FOOD_META_DB"
+database_name = "consumer-truth-meta"
+database_id = "1c449560-9160-4442-bc77-a2b12473f284"
+
 [vars]
 NODE_ENV = "production"
 NEXT_PUBLIC_SUPABASE_URL = "https://rxparbkaszwcvikvowsr.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4cGFyYmthc3p3Y3Zpa3Zvd3NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwMzU3MzcsImV4cCI6MjA4NjYxMTczN30.6cKYD2tB8EBRz6EK3LDktc7aiiZSf9wlPMyjYRLKeFg"
-TWILIO_WHATSAPP_NUMBER = "whatsapp:+14155238886"
+WHATSAPP_PHONE_NUMBER_ID = "your_phone_number_id"
 NEXT_PUBLIC_APP_URL = "https://your-worker.workers.dev"
