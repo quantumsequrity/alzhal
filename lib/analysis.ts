@@ -10,42 +10,44 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
     const productCategory = productData.category || 'food'
     console.log(`[Analysis] Product: ${productData.product_name} (${productCategory}), ${productData.ingredients.length} ingredients`)
 
-    // 2. Check/Update Product in DB
-    let productId
-    const { data: existingProduct } = await supabase
-        .from('products')
-        .select('id, scanned_count')
-        .eq('product_name', productData.product_name)
-        .single()
-
-    if (existingProduct) {
-        productId = existingProduct.id
-        await supabase
+    // 2. Upsert Product in DB (atomic to prevent race conditions)
+    let productId: string | undefined
+    let existingScannedCount = 0
+    try {
+        const { data: upsertedProduct } = await supabase
             .from('products')
-            .update({
-                scanned_count: existingProduct.scanned_count + 1,
-                last_scanned_at: new Date().toISOString(),
-            })
-            .eq('id', productId)
-    } else {
-        const { data: newProduct } = await supabase
-            .from('products')
-            .insert({
+            .upsert({
                 product_name: productData.product_name,
                 brand: productData.brand,
                 category: productData.category,
                 total_ingredients: productData.ingredients.length,
-            })
-            .select()
+                last_scanned_at: new Date().toISOString(),
+            }, { onConflict: 'product_name' })
+            .select('id, scanned_count')
             .single()
-        productId = newProduct?.id
+
+        if (upsertedProduct) {
+            productId = upsertedProduct.id
+            existingScannedCount = upsertedProduct.scanned_count || 0
+            // Atomic increment of scanned_count using RPC or raw update
+            await supabase.rpc('increment_scanned_count', { product_id: upsertedProduct.id })
+                .then(null, async () => {
+                    // Fallback if RPC doesn't exist: use direct update
+                    await supabase
+                        .from('products')
+                        .update({ scanned_count: existingScannedCount + 1 })
+                        .eq('id', upsertedProduct.id)
+                })
+        }
+    } catch (e) {
+        console.error('[Analysis] Product upsert failed:', e)
     }
 
     // 3. Analyze Ingredients (BATCH MODE)
     const analyzedIngredients = []
 
     // A. Identify which ingredients need analysis
-    const ingredientNames = productData.ingredients.map((i: any) => i.name)
+    const ingredientNames = productData.ingredients.map((i: { name: string }) => i.name)
     const { data: cachedIngredients } = await supabase
         .from('ingredients')
         .select('*')
@@ -104,9 +106,12 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
         console.log(`[Analysis] Batch analyzing ${needsAnalysis.length} new ingredients for ${productCategory} product...`)
         const rawBatchResults = await analyzeIngredientBatch(needsAnalysis, productCategory, csvContext, externalApiContext)
 
-        // Normalize batch results keys to lowercase for robust matching
+        // Build case-insensitive lookup: map lowercase key to first matching result
         for (const [key, value] of Object.entries(rawBatchResults)) {
-            batchResults[key.toLowerCase()] = value
+            const lowerKey = key.toLowerCase()
+            if (!(lowerKey in batchResults)) {
+                batchResults[lowerKey] = value
+            }
         }
     }
 
@@ -147,12 +152,32 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
 
             if (officialData.fda_reports > 0) {
                 concerns.push(`FDA Adverse Events: ${officialData.fda_reports} reports filed.`)
+                // Escalate verdict based on FDA adverse event volume
+                if (officialData.fda_reports >= 100 && safetyVerdict === "SAFE") {
+                    safetyVerdict = "CAUTION"
+                }
+                if (officialData.fda_reports >= 1000) {
+                    safetyVerdict = "AVOID"
+                }
             }
             if (officialData.fda_recalls && officialData.fda_recalls.total_recalls > 0) {
                 concerns.push(`FDA Recalls: ${officialData.fda_recalls.total_recalls} recall(s) found.`)
+                // Any FDA recall escalates at least to CAUTION
+                if (safetyVerdict === "SAFE") {
+                    safetyVerdict = "CAUTION"
+                }
+                if (officialData.fda_recalls.total_recalls >= 5) {
+                    safetyVerdict = "AVOID"
+                }
             }
             if (officialData.cas_number !== "Unknown") {
                  finalAnalysisData.chemical_formula = `${finalAnalysisData.chemical_formula || ''} (CAS: ${officialData.cas_number})`
+            }
+
+            // Populate banned_in from enriched data regardless of Gemini's verdict
+            const bannedCountries = finalAnalysisData.banned_countries || []
+            if (bannedCountries.length > 0 && safetyVerdict !== "BANNED") {
+                safetyVerdict = "BANNED"
             }
 
             // Flat fields for DB storage
@@ -166,7 +191,7 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
                 fda_status: finalAnalysisData.regulatory_status?.us_fda || "N/A",
                 eu_status: finalAnalysisData.regulatory_status?.eu_efsa || finalAnalysisData.regulatory_status?.eu_cosing || "N/A",
                 who_status: finalAnalysisData.regulatory_status?.who_iarc || "N/A",
-                banned_in: safetyVerdict === 'Banned' ? (finalAnalysisData.banned_countries || ['Check Sources']) : [],
+                banned_in: bannedCountries.length > 0 ? bannedCountries : [],
                 safe_limit: finalAnalysisData.regulatory_status?.india_fssai || "N/A",
                 concerns: concerns,
                 category: safetyVerdict
@@ -236,6 +261,6 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
         productId,
         productData,
         ingredients: analyzedIngredients,
-        scannedCount: existingProduct?.scanned_count ? existingProduct.scanned_count + 1 : 1,
+        scannedCount: existingScannedCount + 1,
     }
 }

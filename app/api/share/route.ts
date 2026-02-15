@@ -23,18 +23,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'method must be "whatsapp" or "copy"' }, { status: 400, headers: getSecurityHeaders() })
     }
 
-    // Increment share_count directly
-    const { data: current } = await supabase
-        .from('scans')
-        .select('share_count')
-        .eq('id', scan_id)
-        .single()
+    // Atomic increment using RPC, with fallback to read-then-write
+    const { error: rpcError } = await supabase.rpc('increment_share_count', { scan_uuid: scan_id })
+    if (rpcError) {
+      // Fallback if RPC doesn't exist: non-atomic but functional
+      const { data: current } = await supabase
+          .from('scans')
+          .select('share_count')
+          .eq('id', scan_id)
+          .single()
 
-    if (current) {
-        await supabase
-            .from('scans')
-            .update({ share_count: (current.share_count || 0) + 1 })
-            .eq('id', scan_id)
+      if (current) {
+          await supabase
+              .from('scans')
+              .update({ share_count: (current.share_count || 0) + 1 })
+              .eq('id', scan_id)
+      }
     }
 
     return NextResponse.json({ success: true }, { headers: getSecurityHeaders() })

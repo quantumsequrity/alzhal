@@ -11,7 +11,12 @@ if (!supabaseUrl || !supabaseKey) {
             'Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY).'
         )
     }
-    console.warn('Missing Supabase environment variables - database operations will fail')
+    console.warn(
+        'Missing Supabase environment variables - database operations will fail. ' +
+        'Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local'
+    )
 }
 
+// In dev, create client with empty strings so the app boots (DB ops will fail gracefully).
+// In prod, the throw above prevents reaching this line without valid credentials.
 export const supabase = createClient(supabaseUrl || '', supabaseKey || '')

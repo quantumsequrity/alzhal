@@ -106,8 +106,12 @@ export async function sendWhatsAppAudio(to: string, mediaUrl: string): Promise<W
  */
 export function verifyWebhookSignature(signature: string | null, rawBody: string): boolean {
     if (!appSecret) {
-        console.warn('[WhatsApp] No WHATSAPP_APP_SECRET - skipping signature verification in dev')
-        return process.env.NODE_ENV !== 'production'
+        if (process.env.NODE_ENV === 'production') {
+            console.error('[WhatsApp] WHATSAPP_APP_SECRET is required in production')
+            return false
+        }
+        console.warn('[WhatsApp] No WHATSAPP_APP_SECRET - skipping signature verification (dev only)')
+        return true
     }
 
     if (!signature) {
@@ -172,13 +176,23 @@ export async function downloadMedia(mediaId: string): Promise<{ buffer: Buffer; 
 
         // SSRF protection: only allow Meta media URLs
         const parsedUrl = new URL(mediaUrl)
-        if (
-            parsedUrl.hostname !== 'graph.facebook.com' &&
-            !parsedUrl.hostname.endsWith('.fbsbx.com') &&
-            !parsedUrl.hostname.endsWith('.facebook.com') &&
-            !parsedUrl.hostname.endsWith('.whatsapp.net')
-        ) {
-            console.error(`[WhatsApp] Blocked non-Meta media URL: ${parsedUrl.hostname}`)
+        const hostname = parsedUrl.hostname.toLowerCase()
+
+        // Require HTTPS
+        if (parsedUrl.protocol !== 'https:') {
+            console.error(`[WhatsApp] Blocked non-HTTPS media URL: ${parsedUrl.protocol}`)
+            return null
+        }
+
+        // Validate hostname with exact match or subdomain check (dot prefix prevents suffix attacks)
+        const isAllowedHost =
+            hostname === 'graph.facebook.com' ||
+            hostname.endsWith('.fbsbx.com') && (hostname === 'fbsbx.com' || hostname[hostname.length - '.fbsbx.com'.length - 1] === '.') ||
+            hostname.endsWith('.facebook.com') && hostname[hostname.length - '.facebook.com'.length - 1] === '.' ||
+            hostname.endsWith('.whatsapp.net') && (hostname === 'whatsapp.net' || hostname[hostname.length - '.whatsapp.net'.length - 1] === '.')
+
+        if (!isAllowedHost) {
+            console.error(`[WhatsApp] Blocked non-Meta media URL: ${hostname}`)
             return null
         }
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { analyzeIngredientBatch, callGeminiWithRetry, model } from '@/lib/gemini'
 import { getEnrichedDataForBatch, formatEnrichedDataForPrompt, EnrichedIngredientData } from '@/lib/external-data'
 import { supabase } from '@/lib/supabase'
-import { rateLimit, getClientIdentifier, sanitizeInput, validateLanguage, getSecurityHeaders } from '@/lib/security'
+import { rateLimit, getClientIdentifier, sanitizeInput, validateLanguage, validateOrigin, getSecurityHeaders } from '@/lib/security'
 import { getCachedIngredient, cacheIngredient } from '@/lib/cache'
 import { lookupIngredientsContext, lookupProductContext } from '@/lib/product-data'
 
@@ -12,6 +12,11 @@ const limiter = rateLimit({ windowMs: 60000, maxRequests: 10 })
 
 export async function POST(req: NextRequest) {
   try {
+    // CSRF protection
+    if (!validateOrigin(req)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: getSecurityHeaders() })
+    }
+
     // Rate limiting
     const clientId = getClientIdentifier(req)
     const { allowed } = limiter(clientId)
@@ -93,6 +98,7 @@ Rules:
 
     // Check cache for already-analyzed ingredients
     const cachedResults: Record<string, any> = {}
+    const needsDbLookup: string[] = []
     const needsAnalysis: string[] = []
 
     for (const name of ingredientNames) {
@@ -100,13 +106,21 @@ Rules:
       if (cached) {
         cachedResults[name] = cached
       } else {
-        // Check database
-        const { data: dbIngredient } = await supabase
-          .from('ingredients')
-          .select('*')
-          .ilike('name', name)
-          .single()
+        needsDbLookup.push(name)
+      }
+    }
 
+    // Batch DB lookup instead of N+1 individual queries
+    if (needsDbLookup.length > 0) {
+      const { data: dbIngredients } = await supabase
+        .from('ingredients')
+        .select('*')
+        .in('name', needsDbLookup)
+
+      const dbMap = new Map((dbIngredients || []).map((i: any) => [i.name.toLowerCase(), i]))
+
+      for (const name of needsDbLookup) {
+        const dbIngredient = dbMap.get(name.toLowerCase())
         if (dbIngredient) {
           cachedResults[name] = dbIngredient
           cacheIngredient(name, dbIngredient)
@@ -155,7 +169,10 @@ Rules:
     if (needsAnalysis.length > 0) {
       const rawBatch = await analyzeIngredientBatch(needsAnalysis, productCategory, csvContext, externalApiContext)
       for (const [key, value] of Object.entries(rawBatch)) {
-        batchResults[key.toLowerCase()] = value
+        const lowerKey = key.toLowerCase()
+        if (!(lowerKey in batchResults)) {
+          batchResults[lowerKey] = value
+        }
       }
     }
 
@@ -179,11 +196,29 @@ Rules:
         }
 
         const concerns = analysisData.concerns || []
+        let safetyVerdict = analysisData.safety_verdict || "CAUTION"
         if (officialData.fda_reports > 0) {
           concerns.push(`FDA Adverse Events: ${officialData.fda_reports} reports filed`)
+          if (officialData.fda_reports >= 100 && safetyVerdict === "SAFE") {
+            safetyVerdict = "CAUTION"
+          }
+          if (officialData.fda_reports >= 1000) {
+            safetyVerdict = "AVOID"
+          }
         }
         if (officialData.fda_recalls && officialData.fda_recalls.total_recalls > 0) {
           concerns.push(`FDA Recalls: ${officialData.fda_recalls.total_recalls} recall(s) found`)
+          if (safetyVerdict === "SAFE") {
+            safetyVerdict = "CAUTION"
+          }
+          if (officialData.fda_recalls.total_recalls >= 5) {
+            safetyVerdict = "AVOID"
+          }
+        }
+
+        const bannedCountries = analysisData.banned_countries || []
+        if (bannedCountries.length > 0 && safetyVerdict !== "BANNED") {
+          safetyVerdict = "BANNED"
         }
 
         analysis = {
@@ -200,38 +235,37 @@ Rules:
           fda_status: analysisData.regulatory_status?.us_fda || "N/A",
           eu_status: analysisData.regulatory_status?.eu_efsa || analysisData.regulatory_status?.eu_cosing || "N/A",
           who_status: analysisData.regulatory_status?.who_iarc || "N/A",
-          safety_verdict: analysisData.safety_verdict || "CAUTION",
-          banned_countries: analysisData.banned_countries || [],
+          safety_verdict: safetyVerdict,
+          banned_countries: bannedCountries,
           restricted_countries: analysisData.restricted_countries || [],
-          banned_in: analysisData.safety_verdict === 'BANNED' ? (analysisData.banned_countries || ['Check Sources']) : [],
+          banned_in: bannedCountries.length > 0 ? bannedCountries : [],
           safe_limit: analysisData.regulatory_status?.india_fssai || "N/A",
           concerns,
           sources_cited: analysisData.sources_cited || [],
-          category: analysisData.safety_verdict || "CAUTION",
+          category: safetyVerdict,
           epa_link: officialData.epa_link,
           pubchem_url: officialData.pubchem?.pubchem_url || null,
           sources_checked: officialData.sources_checked || [],
         }
 
-        // Save to DB
-        try {
-          await supabase.from('ingredients').insert({
-            name,
-            analyzed_count: 1,
-            simple_name: analysis.simple_name,
-            chemical_formula: analysis.chemical_formula,
-            raw_materials: analysis.raw_materials,
-            common_uses: analysis.common_uses,
-            fda_status: analysis.fda_status,
-            eu_status: analysis.eu_status,
-            who_status: analysis.who_status,
-            banned_in: analysis.banned_in,
-            safe_limit: analysis.safe_limit,
-            concerns: analysis.concerns,
-            category: analysis.category,
-          })
-        } catch (e) {
-          // Ignore duplicate key errors
+        // Save to DB (upsert to handle concurrent duplicate inserts)
+        const { error: insertError } = await supabase.from('ingredients').upsert({
+          name,
+          analyzed_count: 1,
+          simple_name: analysis.simple_name,
+          chemical_formula: analysis.chemical_formula,
+          raw_materials: analysis.raw_materials,
+          common_uses: analysis.common_uses,
+          fda_status: analysis.fda_status,
+          eu_status: analysis.eu_status,
+          who_status: analysis.who_status,
+          banned_in: analysis.banned_in,
+          safe_limit: analysis.safe_limit,
+          concerns: analysis.concerns,
+          category: analysis.category,
+        }, { onConflict: 'name', ignoreDuplicates: true })
+        if (insertError) {
+          console.error(`[TextAnalysis] DB save failed for ${name}:`, insertError.message)
         }
 
         cacheIngredient(name, analysis)

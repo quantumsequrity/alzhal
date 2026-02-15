@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { transcribeAudio, callGeminiWithRetry, model } from '@/lib/gemini'
 import { supabase } from '@/lib/supabase'
-import { rateLimit, getClientIdentifier, sanitizeInput, getSecurityHeaders } from '@/lib/security'
+import { rateLimit, getClientIdentifier, sanitizeInput, validateFileSignature, validateOrigin, getSecurityHeaders } from '@/lib/security'
 
 export const maxDuration = 30
 
@@ -21,6 +21,11 @@ const MAX_CONTEXT_LENGTH = 1000
 
 export async function POST(req: NextRequest) {
   try {
+    // CSRF protection
+    if (!validateOrigin(req)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: getSecurityHeaders() })
+    }
+
     // Rate limiting
     const clientId = getClientIdentifier(req)
     const { allowed } = limiter(clientId)
@@ -61,6 +66,15 @@ export async function POST(req: NextRequest) {
     if (!ALLOWED_AUDIO_TYPES.includes(mimeType)) {
       return NextResponse.json(
         { error: 'Unsupported audio format. Please use OGG, MP3, MP4, WAV, or WebM.' },
+        { status: 400, headers: getSecurityHeaders() }
+      )
+    }
+
+    // Validate file signature (magic bytes)
+    const signatureValid = await validateFileSignature(audioFile)
+    if (!signatureValid) {
+      return NextResponse.json(
+        { error: 'File content does not match its declared audio type.' },
         { status: 400, headers: getSecurityHeaders() }
       )
     }

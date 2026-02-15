@@ -4,13 +4,15 @@
 // No setInterval timers: cleanup is done lazily on get/set to stay compatible
 // with serverless runtimes that don't support long-lived timers.
 
-const NULL_SENTINEL = '__NULL__' as const
+// Use a unique object reference as sentinel (impossible to collide with user data)
+const NULL_SENTINEL: unique symbol = Symbol('cache_null')
 type SentinelType = typeof NULL_SENTINEL
 
 interface CacheEntry<T> {
   data: T | SentinelType
   expiresAt: number
   createdAt: number
+  lastAccessedAt: number
 }
 
 const MAX_CACHE_SIZE = 10000
@@ -37,10 +39,12 @@ class MemoryCache {
       this.evictOldest()
     }
 
+    const now = Date.now()
     this.store.set(key, {
       data: value === null ? NULL_SENTINEL : value,
-      expiresAt: Date.now() + ttlMs,
-      createdAt: Date.now(),
+      expiresAt: now + ttlMs,
+      createdAt: now,
+      lastAccessedAt: now,
     })
   }
 
@@ -55,6 +59,9 @@ class MemoryCache {
       this.store.delete(key)
       return undefined
     }
+
+    // Update last access time for LRU eviction
+    entry.lastAccessedAt = Date.now()
 
     if (entry.data === NULL_SENTINEL) {
       return null
@@ -83,8 +90,9 @@ class MemoryCache {
 
   private evictOldest(): void {
     const entriesToEvict = Math.ceil(MAX_CACHE_SIZE * 0.2)
+    // LRU eviction: sort by last access time, evict least recently used
     const entries = Array.from(this.store.entries())
-      .sort((a, b) => a[1].createdAt - b[1].createdAt)
+      .sort((a, b) => a[1].lastAccessedAt - b[1].lastAccessedAt)
       .slice(0, entriesToEvict)
 
     for (const [key] of entries) {
@@ -114,6 +122,7 @@ export const CACHE_TTL = {
   INGREDIENT: 7 * 24 * 60 * 60 * 1000, // 7 days
   PRODUCT: 24 * 60 * 60 * 1000, // 1 day
   EXTERNAL_API: 12 * 60 * 60 * 1000, // 12 hours
+  EXTERNAL_API_FAILURE: 5 * 60 * 1000, // 5 minutes for failed lookups
   STATS: 5 * 60 * 1000, // 5 minutes
 }
 
@@ -146,7 +155,9 @@ export function getCachedProduct(name: string): any | undefined {
 
 export function cacheExternalData(identifier: string, data: any): void {
   const key = getCacheKey('external', identifier)
-  cache.set(key, data, CACHE_TTL.EXTERNAL_API)
+  // Use shorter TTL for failure sentinels so transient errors don't block lookups
+  const ttl = data === '__FAILED__' ? CACHE_TTL.EXTERNAL_API_FAILURE : CACHE_TTL.EXTERNAL_API
+  cache.set(key, data, ttl)
 }
 
 export function getCachedExternalData(identifier: string): any | undefined {

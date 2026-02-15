@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { processImageAndAnalyze } from '@/lib/analysis'
 import { supabase } from '@/lib/supabase'
-import { rateLimit, getClientIdentifier, validateImageFile, validateLanguage, getSecurityHeaders } from '@/lib/security'
+import { rateLimit, getClientIdentifier, validateImageFile, validateFileSignature, validateLanguage, validateOrigin, getSecurityHeaders } from '@/lib/security'
 
 export const maxDuration = 60
 
@@ -9,6 +9,11 @@ const limiter = rateLimit({ windowMs: 60000, maxRequests: 5 })
 
 export async function POST(req: NextRequest) {
     try {
+        // CSRF protection
+        if (!validateOrigin(req)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: getSecurityHeaders() })
+        }
+
         // Rate limiting
         const clientId = getClientIdentifier(req)
         const { allowed } = limiter(clientId)
@@ -28,10 +33,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No image provided' }, { status: 400, headers: getSecurityHeaders() })
         }
 
-        // Validate file
+        // Validate file type and size
         const validation = validateImageFile(file)
         if (!validation.valid) {
             return NextResponse.json({ error: validation.error }, { status: 400, headers: getSecurityHeaders() })
+        }
+
+        // Validate file signature (magic bytes) to prevent spoofed MIME types
+        const signatureValid = await validateFileSignature(file)
+        if (!signatureValid) {
+            return NextResponse.json(
+                { error: 'File content does not match its declared type. Please upload a valid image.' },
+                { status: 400, headers: getSecurityHeaders() }
+            )
         }
 
         let buffer: Buffer = Buffer.from(await file.arrayBuffer()) as Buffer

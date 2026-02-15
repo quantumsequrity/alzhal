@@ -47,11 +47,12 @@ export function rateLimit(config: RateLimitConfig) {
       return { allowed: true }
     }
 
-    if (record.count >= config.maxRequests) {
+    // Atomic check-and-increment: increment first, then check
+    record.count++
+    if (record.count > config.maxRequests) {
       return { allowed: false, resetTime: record.resetTime }
     }
 
-    record.count++
     return { allowed: true }
   }
 }
@@ -105,6 +106,57 @@ export function sanitizeInput(input: string): string {
   } while (result !== previous && iterations < maxIterations)
 
   return result.trim().slice(0, 5000) // Limit length
+}
+
+// Magic number signatures for file type validation
+const FILE_SIGNATURES: Record<string, number[][]> = {
+  'image/jpeg': [[0xFF, 0xD8, 0xFF]],
+  'image/png': [[0x89, 0x50, 0x4E, 0x47]],
+  'image/webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF header (WebP starts with RIFF....WEBP)
+  'image/avif': [], // AVIF uses ftyp box, checked separately
+  'image/heic': [], // HEIC uses ftyp box, checked separately
+  'image/heif': [], // HEIF uses ftyp box, checked separately
+}
+
+// Check if buffer matches ftyp-based formats (AVIF, HEIC, HEIF)
+function isFtypFormat(bytes: Uint8Array): boolean {
+  // ftyp box: bytes 4-7 should be 'ftyp'
+  if (bytes.length < 12) return false
+  return bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70
+}
+
+// Validate file magic bytes against claimed MIME type
+export async function validateFileSignature(file: File): Promise<boolean> {
+  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+  if (bytes.length < 4) return false
+
+  const claimed = file.type.toLowerCase()
+
+  // ftyp-based formats (AVIF, HEIC, HEIF)
+  if (['image/avif', 'image/heic', 'image/heif'].includes(claimed)) {
+    return isFtypFormat(bytes)
+  }
+
+  // Audio formats - basic signature checks
+  if (claimed.startsWith('audio/')) {
+    // OGG: starts with OggS
+    if (claimed === 'audio/ogg' && bytes[0] === 0x4F && bytes[1] === 0x67 && bytes[2] === 0x67 && bytes[3] === 0x53) return true
+    // MP3: starts with ID3 or 0xFF 0xFB
+    if ((claimed === 'audio/mp3' || claimed === 'audio/mpeg') && ((bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) || (bytes[0] === 0xFF && (bytes[1] & 0xE0) === 0xE0))) return true
+    // WAV: RIFF header
+    if (claimed === 'audio/wav' && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) return true
+    // WebM/MP4: ftyp box or EBML header
+    if ((claimed === 'audio/webm' || claimed === 'audio/mp4') && (bytes[0] === 0x1A && bytes[1] === 0x45 && bytes[2] === 0xDF && bytes[3] === 0xA3 || isFtypFormat(bytes))) return true
+    // Unknown audio format - reject
+    return false
+  }
+
+  const signatures = FILE_SIGNATURES[claimed]
+  if (!signatures || signatures.length === 0) return true // No signature to check
+
+  return signatures.some(sig =>
+    sig.every((byte, i) => bytes[i] === byte)
+  )
 }
 
 // Validate image file
@@ -161,6 +213,29 @@ export function getSecurityHeaders() {
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
   }
+}
+
+// CSRF protection: verify Origin header matches our domain
+export function validateOrigin(req: NextRequest): boolean {
+  const origin = req.headers.get('origin')
+  const referer = req.headers.get('referer')
+
+  // Webhook endpoints (WhatsApp, Telegram) don't send Origin headers
+  // Allow requests with no Origin (same-origin requests in some browsers)
+  if (!origin && !referer) return true
+
+  const host = req.headers.get('host') || ''
+  const allowedOrigins = [
+    `https://${host}`,
+    `http://${host}`, // Allow in dev
+    'http://localhost:3000',
+    'https://localhost:3000',
+  ]
+
+  if (origin && allowedOrigins.some(allowed => origin === allowed)) return true
+  if (referer && allowedOrigins.some(allowed => referer.startsWith(allowed))) return true
+
+  return false
 }
 
 // Validate and sanitize ingredient name

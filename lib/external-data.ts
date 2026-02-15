@@ -31,10 +31,17 @@ const circuits: Record<string, CircuitBreakerState> = {
 function isCircuitOpen(name: string): boolean {
   const cb = circuits[name]
   if (!cb || !cb.isOpen) return false
-  if (Date.now() - cb.openedAt > CIRCUIT_BREAKER_RESET_MS) {
+  const elapsed = Date.now() - cb.openedAt
+  if (elapsed > CIRCUIT_BREAKER_RESET_MS) {
+    // Full reset after cooldown
     cb.isOpen = false
     cb.failCount = 0
     console.log(`[${name.toUpperCase()}] Circuit breaker reset - retrying API calls`)
+    return false
+  }
+  // Half-open: allow one probe request every 60s to check if API is back
+  if (elapsed > 60000 && (Date.now() % 60000) < 1000) {
+    console.log(`[${name.toUpperCase()}] Circuit breaker half-open - allowing probe request`)
     return false
   }
   return true
@@ -187,24 +194,26 @@ export async function getOpenFDACount(ingredientName: string, productType: strin
         let endpoint: string
         let searchField: string
 
+        let url: string
         switch (productType) {
             case 'cosmetic':
             case 'household':
                 endpoint = 'drug/event'
                 searchField = 'patient.drug.openfda.substance_name'
+                url = `https://api.fda.gov/${endpoint}.json?search=${searchField}:${encodeURIComponent(`"${ingredientName}"`)}&limit=1`
                 break
             case 'pharma':
                 endpoint = 'drug/event'
                 searchField = 'patient.drug.openfda.substance_name'
+                url = `https://api.fda.gov/${endpoint}.json?search=${searchField}:${encodeURIComponent(`"${ingredientName}"`)}&limit=1`
                 break
             default:
+                // For food: search by ingredient name across both products.industry_name AND reactions
                 endpoint = 'food/event'
-                searchField = 'products.industry_name'
+                const encodedName = encodeURIComponent(`"${ingredientName}"`)
+                url = `https://api.fda.gov/${endpoint}.json?search=products.industry_name:${encodedName}+reactions:${encodedName}&limit=1`
                 break
         }
-
-        const encodedName = encodeURIComponent(`"${ingredientName}"`)
-        const url = `https://api.fda.gov/${endpoint}.json?search=${searchField}:${encodedName}&limit=1`
 
         const res = await fetchWithTimeout(url, { headers: HEADERS })
 
