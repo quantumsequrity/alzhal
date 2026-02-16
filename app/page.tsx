@@ -301,7 +301,7 @@ export default function Home() {
         }
     }, [])
 
-    const handleFileSelect = async (file: File) => {
+    const handleFileSelect = async (file: File, ocrText: string = '') => {
         setIsAnalyzing(true)
         setError(null)
         setAnalysisData(null)
@@ -309,6 +309,9 @@ export default function Home() {
         const formData = new FormData()
         formData.append('image', file)
         formData.append('language', language)
+        if (ocrText) {
+            formData.append('ocrText', ocrText)
+        }
 
         try {
             const response = await fetch('/api/analyze/image', {

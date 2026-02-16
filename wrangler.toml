@@ -12,6 +12,11 @@ bucket_name = "consumer-truth-audio"
 binding = "AUDIO_BUCKET"
 
 [[d1_databases]]
+binding = "APP_DB"
+database_name = "consumer-truth-app"
+database_id = "d192e561-9414-4d42-b589-165981e22a3c"
+
+[[d1_databases]]
 binding = "FOOD_DB"
 database_name = "consumer-truth-food"
 database_id = "55a42a68-a2fd-4653-8d82-f8947a750ebf"
@@ -26,9 +31,10 @@ binding = "FOOD_META_DB"
 database_name = "consumer-truth-meta"
 database_id = "1c449560-9160-4442-bc77-a2b12473f284"
 
+[ai]
+binding = "AI"
+
 [vars]
 NODE_ENV = "production"
-NEXT_PUBLIC_SUPABASE_URL = "https://rxparbkaszwcvikvowsr.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4cGFyYmthc3p3Y3Zpa3Zvd3NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwMzU3MzcsImV4cCI6MjA4NjYxMTczN30.6cKYD2tB8EBRz6EK3LDktc7aiiZSf9wlPMyjYRLKeFg"
 WHATSAPP_PHONE_NUMBER_ID = "your_phone_number_id"
 NEXT_PUBLIC_APP_URL = "https://your-worker.workers.dev"

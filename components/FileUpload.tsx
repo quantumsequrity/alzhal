@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { Upload, Loader2 } from 'lucide-react'
 
 interface FileUploadProps {
-    onFileSelect: (file: File) => void
+    onFileSelect: (file: File, ocrText: string) => void
     isUploading: boolean
     language?: string
 }
@@ -66,7 +66,32 @@ export default function FileUpload({ onFileSelect, isUploading, language = 'Engl
         }
         reader.readAsDataURL(file)
         const compressed = await compressImage(file)
-        onFileSelect(compressed)
+
+        // Run client-side Tesseract OCR in parallel (non-blocking, 15s timeout)
+        let ocrText = ''
+        try {
+            const ocrPromise = (async () => {
+                const { createWorker } = await import('tesseract.js')
+                const worker = await createWorker('eng')
+                const { data } = await worker.recognize(compressed)
+                await worker.terminate()
+                return data.text || ''
+            })()
+
+            const timeoutPromise = new Promise<string>((_, reject) =>
+                setTimeout(() => reject(new Error('Tesseract timeout')), 15000)
+            )
+
+            ocrText = await Promise.race([ocrPromise, timeoutPromise])
+            if (ocrText) {
+                console.log(`[Tesseract] Client OCR: ${ocrText.length} chars extracted`)
+            }
+        } catch (err) {
+            console.warn('[Tesseract] Client OCR failed (non-blocking):', (err as Error).message)
+            ocrText = ''
+        }
+
+        onFileSelect(compressed, ocrText)
     }, [onFileSelect, compressImage])
 
     const handleDrop = useCallback((e: React.DragEvent) => {

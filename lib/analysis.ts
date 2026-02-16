@@ -1,12 +1,45 @@
 import { analyzeImage, analyzeIngredientBatch, translateContent } from './gemini'
-import { supabase } from './supabase'
+import { query, queryOne, execute, generateId } from './db'
 import { getEnrichedDataForBatch, formatEnrichedDataForPrompt, EnrichedIngredientData } from './external-data'
 import { lookupIngredientsContext, lookupProductContext } from './product-data'
+import { mergeOcrResults } from './ocr-merge'
+import { extractWithWorkersAI } from './workers-ai-ocr'
 
-export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: string, language: string = 'English') {
-    // 1. Analyze Image with Gemini Vision
-    console.log('[Analysis] Starting image analysis...')
-    const productData = await analyzeImage(imageBuffer, mimeType)
+export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: string, language: string = 'English', clientOcrText: string = '') {
+    // 1. Multi-source OCR: Gemini Vision + Workers AI in parallel (Tesseract already ran client-side)
+    console.log('[Analysis] Starting multi-source OCR...')
+
+    const [geminiResult, workersAIResult] = await Promise.allSettled([
+        analyzeImage(imageBuffer, mimeType),
+        extractWithWorkersAI(imageBuffer, mimeType),
+    ])
+
+    const geminiData = geminiResult.status === 'fulfilled' ? geminiResult.value : null
+    const workersAIData = workersAIResult.status === 'fulfilled' ? workersAIResult.value : null
+
+    if (geminiResult.status === 'rejected') {
+        console.warn('[Analysis] Gemini Vision failed:', geminiResult.reason?.message || geminiResult.reason)
+    }
+    if (workersAIResult.status === 'rejected') {
+        console.warn('[Analysis] Workers AI OCR failed:', workersAIResult.reason?.message || workersAIResult.reason)
+    }
+
+    // Merge all OCR sources
+    const merged = mergeOcrResults({
+        gemini: geminiData,
+        workersAI: workersAIData,
+        tesseractRaw: clientOcrText,
+    })
+
+    console.log(`[Analysis] OCR sources: [${merged.ocrSources.join(', ')}], primary: ${merged.primarySource}, ${merged.ingredients.length} ingredients`)
+
+    const productData = {
+        product_name: merged.product_name,
+        brand: merged.brand,
+        category: merged.category,
+        ingredients: merged.ingredients,
+    }
+    const ocrSources = merged.ocrSources
     const productCategory = productData.category || 'food'
     console.log(`[Analysis] Product: ${productData.product_name} (${productCategory}), ${productData.ingredients.length} ingredients`)
 
@@ -14,30 +47,26 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
     let productId: string | undefined
     let existingScannedCount = 0
     try {
-        const { data: upsertedProduct } = await supabase
-            .from('products')
-            .upsert({
-                product_name: productData.product_name,
-                brand: productData.brand,
-                category: productData.category,
-                total_ingredients: productData.ingredients.length,
-                last_scanned_at: new Date().toISOString(),
-            }, { onConflict: 'product_name' })
-            .select('id, scanned_count')
-            .single()
-
-        if (upsertedProduct) {
-            productId = upsertedProduct.id
-            existingScannedCount = upsertedProduct.scanned_count || 0
-            // Atomic increment of scanned_count using RPC or raw update
-            await supabase.rpc('increment_scanned_count', { product_id: upsertedProduct.id })
-                .then(null, async () => {
-                    // Fallback if RPC doesn't exist: use direct update
-                    await supabase
-                        .from('products')
-                        .update({ scanned_count: existingScannedCount + 1 })
-                        .eq('id', upsertedProduct.id)
-                })
+        const newId = generateId()
+        await execute(
+            `INSERT INTO products (id, product_name, brand, category, total_ingredients, last_scanned_at)
+             VALUES (?, ?, ?, ?, ?, datetime('now'))
+             ON CONFLICT(product_name) DO UPDATE SET
+               brand = excluded.brand,
+               category = excluded.category,
+               total_ingredients = excluded.total_ingredients,
+               last_scanned_at = datetime('now')`,
+            [newId, productData.product_name, productData.brand, productData.category, productData.ingredients.length]
+        )
+        const product = await queryOne<{ id: string; scanned_count: number }>(
+            'SELECT id, scanned_count FROM products WHERE product_name = ?',
+            [productData.product_name]
+        )
+        if (product) {
+            productId = product.id
+            existingScannedCount = product.scanned_count || 0
+            // Atomic increment — single SQL statement, no RPC needed
+            await execute('UPDATE products SET scanned_count = scanned_count + 1 WHERE id = ?', [product.id])
         }
     } catch (e) {
         console.error('[Analysis] Product upsert failed:', e)
@@ -48,12 +77,17 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
 
     // A. Identify which ingredients need analysis
     const ingredientNames = productData.ingredients.map((i: { name: string }) => i.name)
-    const { data: cachedIngredients } = await supabase
-        .from('ingredients')
-        .select('*')
-        .in('name', ingredientNames)
+    const placeholders = ingredientNames.map(() => '?').join(',')
+    const cachedIngredients = ingredientNames.length > 0
+        ? await query<any>(`SELECT * FROM ingredients WHERE name IN (${placeholders})`, ingredientNames)
+        : []
 
-    const cachedMap = new Map((cachedIngredients || []).map((i) => [i.name.toLowerCase(), i]))
+    const cachedMap = new Map(cachedIngredients.map((i: any) => {
+        // Parse JSON text columns from D1
+        if (typeof i.concerns === 'string') try { i.concerns = JSON.parse(i.concerns) } catch { i.concerns = [] }
+        if (typeof i.banned_in === 'string') try { i.banned_in = JSON.parse(i.banned_in) } catch { i.banned_in = [] }
+        return [i.name.toLowerCase(), i]
+    }))
     const needsAnalysis: string[] = []
 
     for (const item of productData.ingredients) {
@@ -181,7 +215,7 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
             }
 
             // Flat fields for DB storage
-            let analysisToSave = {
+            let analysisToSave: any = {
                 name,
                 analyzed_count: 1,
                 simple_name: finalAnalysisData.simple_name || "Analysis unavailable",
@@ -199,12 +233,24 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
 
             // ONLY Save to DB if we actually got a valid analysis from Gemini
             if (isValidAnalysis) {
-                const { data: savedIngredient } = await supabase
-                    .from('ingredients')
-                    .insert(analysisToSave)
-                    .select()
-                    .single()
-                analysis = savedIngredient || analysisToSave
+                const ingId = generateId()
+                try {
+                    await execute(
+                        `INSERT INTO ingredients (id, name, analyzed_count, simple_name, chemical_formula, raw_materials, common_uses, fda_status, eu_status, who_status, banned_in, safe_limit, concerns, category)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         ON CONFLICT(name) DO NOTHING`,
+                        [ingId, analysisToSave.name, analysisToSave.analyzed_count, analysisToSave.simple_name,
+                         analysisToSave.chemical_formula,
+                         typeof analysisToSave.raw_materials === 'string' ? analysisToSave.raw_materials : JSON.stringify(analysisToSave.raw_materials || null),
+                         typeof analysisToSave.common_uses === 'string' ? analysisToSave.common_uses : JSON.stringify(analysisToSave.common_uses || null),
+                         analysisToSave.fda_status, analysisToSave.eu_status, analysisToSave.who_status,
+                         JSON.stringify(analysisToSave.banned_in), analysisToSave.safe_limit,
+                         JSON.stringify(analysisToSave.concerns), analysisToSave.category]
+                    )
+                } catch (e) {
+                    console.error(`[Analysis] DB save failed for ${name}:`, e)
+                }
+                analysis = analysisToSave
             } else {
                 console.warn(`Skipping DB save for ${name} (Batch analysis failed)`)
                 analysis = analysisToSave
@@ -262,5 +308,6 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
         productData,
         ingredients: analyzedIngredients,
         scannedCount: existingScannedCount + 1,
+        ocrSources,
     }
 }

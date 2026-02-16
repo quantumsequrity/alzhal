@@ -156,17 +156,30 @@ export async function analyzeImage(imageBuffer: Buffer, mimeType: string) {
     },
   }
 
-  const result = await callGeminiWithRetry(model, [prompt, imagePart])
-  const response = await result.response
-  const text = response.text()
-
   try {
-    // Clean up markdown code blocks if present
-    const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim()
-    return JSON.parse(jsonString)
-  } catch (e) {
-    console.error('Failed to parse JSON from Gemini vision:', text)
-    throw new Error('Failed to parse product data')
+    const result = await callGeminiWithRetry(model, [prompt, imagePart])
+    const response = await result.response
+    const text = response.text()
+
+    try {
+      // Clean up markdown code blocks if present
+      const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim()
+      return JSON.parse(jsonString)
+    } catch (e) {
+      console.error('Failed to parse JSON from Gemini vision:', text)
+      throw new Error('Failed to parse product data')
+    }
+  } catch (error: any) {
+    const message = error.message || ''
+    const status = error.status || error.httpCode
+    const is429 = message.includes('429') || status === 429
+
+    if (is429) {
+      console.warn('[Gemini Vision] 429 rate limited — returning null (other OCR sources will be used)')
+      return null
+    }
+    // Non-429 errors still throw
+    throw error
   }
 }
 

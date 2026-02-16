@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { processImageAndAnalyze } from '@/lib/analysis'
-import { supabase } from '@/lib/supabase'
+import { execute, generateId } from '@/lib/db'
 import { rateLimit, getClientIdentifier, validateImageFile, validateFileSignature, validateLanguage, validateOrigin, getSecurityHeaders } from '@/lib/security'
 
 export const maxDuration = 60
@@ -28,6 +28,12 @@ export async function POST(req: NextRequest) {
         const file = formData.get('image')
         const rawLang = formData.get('language')
         const language = validateLanguage(typeof rawLang === 'string' ? rawLang : 'English')
+
+        // Client-side Tesseract OCR text (optional, max 10,000 chars)
+        const rawOcrText = formData.get('ocrText')
+        const clientOcrText = typeof rawOcrText === 'string'
+            ? rawOcrText.slice(0, 10000).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]/g, '')
+            : ''
 
         if (!file || !(file instanceof File)) {
             return NextResponse.json({ error: 'No image provided' }, { status: 400, headers: getSecurityHeaders() })
@@ -75,22 +81,20 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        // Process and analyze
-        const result = await processImageAndAnalyze(buffer, mimeType, language)
+        // Process and analyze (pass client OCR text for multi-source merge)
+        const result = await processImageAndAnalyze(buffer, mimeType, language, clientOcrText)
 
         // Log scan (non-blocking)
         let scanId: string | undefined
         try {
-            const { data: scanData } = await supabase.from('scans').insert({
-                product_id: result.productId,
-                input_type: 'web_upload',
-                language,
-                ingredients_found: result.ingredients.map((i: any) => i.name),
-                response_sent: true,
-            }).select('id').single()
-            scanId = scanData?.id
+            scanId = generateId()
+            await execute(
+                `INSERT INTO scans (id, product_id, input_type, language, ingredients_found, response_sent) VALUES (?, ?, ?, ?, ?, 1)`,
+                [scanId, result.productId || null, 'web_upload', language, JSON.stringify(result.ingredients.map((i: any) => i.name))]
+            )
         } catch (e) {
             console.error('Failed to log scan:', e)
+            scanId = undefined
         }
 
         return NextResponse.json({
@@ -98,6 +102,7 @@ export async function POST(req: NextRequest) {
             ingredients: result.ingredients,
             scanId,
             scannedCount: result.scannedCount,
+            ocrSources: result.ocrSources,
         }, { headers: getSecurityHeaders() })
     } catch (error: any) {
         console.error('Analysis failed:', error)
