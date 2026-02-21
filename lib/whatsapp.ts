@@ -63,21 +63,56 @@ async function whatsappApiCall(payload: Record<string, any>): Promise<WhatsAppRe
 }
 
 /**
+ * Split text into chunks of ≤maxLen chars, breaking at newlines when possible.
+ */
+function splitMessage(text: string, maxLen = 4096): string[] {
+    if (text.length <= maxLen) return [text]
+
+    const chunks: string[] = []
+    let remaining = text
+
+    while (remaining.length > 0) {
+        if (remaining.length <= maxLen) {
+            chunks.push(remaining)
+            break
+        }
+
+        let splitAt = remaining.lastIndexOf('\n', maxLen)
+        if (splitAt < maxLen * 0.3) {
+            splitAt = maxLen
+        }
+
+        chunks.push(remaining.slice(0, splitAt))
+        remaining = remaining.slice(splitAt).replace(/^\n/, '')
+    }
+
+    return chunks
+}
+
+/**
  * Send a text message via WhatsApp Cloud API.
+ * Automatically splits messages longer than 4096 chars.
  */
 export async function sendWhatsAppMessage(to: string, body: string): Promise<WhatsAppResult> {
-    try {
-        const recipient = normalizePhoneNumber(to)
-        return await whatsappApiCall({
-            messaging_product: 'whatsapp',
-            to: recipient,
-            type: 'text',
-            text: { body },
-        })
-    } catch (error) {
-        console.error('Error sending WhatsApp message:', error)
-        return { success: false, rateLimited: false, error: String(error) }
+    const chunks = splitMessage(body, 4096)
+    const recipient = normalizePhoneNumber(to)
+    let lastResult: WhatsAppResult = { success: true, data: null }
+
+    for (const chunk of chunks) {
+        try {
+            lastResult = await whatsappApiCall({
+                messaging_product: 'whatsapp',
+                to: recipient,
+                type: 'text',
+                text: { body: chunk },
+            })
+        } catch (error) {
+            console.error('Error sending WhatsApp message:', error)
+            return { success: false, rateLimited: false, error: String(error) }
+        }
     }
+
+    return lastResult
 }
 
 /**

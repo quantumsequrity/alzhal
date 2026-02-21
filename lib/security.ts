@@ -99,9 +99,10 @@ export function sanitizeInput(input: string): string {
   do {
     previous = result
     result = result
-      .replace(/[<>]/g, '') // Remove angle brackets
+      .replace(/[<>]/g, '') // Remove angle brackets (also prevents </user_input> prompt injection)
       .replace(/javascript:/gi, '') // Remove javascript: protocol
       .replace(/on\w+\s*=/gi, '') // Remove event handlers
+      .replace(/user_input/gi, '') // Strip prompt boundary markers
     iterations++
   } while (result !== previous && iterations < maxIterations)
 

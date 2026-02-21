@@ -35,30 +35,65 @@ async function telegramApiCall(method: string, payload: Record<string, any>): Pr
 }
 
 /**
+ * Split text into chunks of ≤maxLen chars, breaking at newlines when possible.
+ */
+function splitMessage(text: string, maxLen = 4096): string[] {
+    if (text.length <= maxLen) return [text]
+
+    const chunks: string[] = []
+    let remaining = text
+
+    while (remaining.length > 0) {
+        if (remaining.length <= maxLen) {
+            chunks.push(remaining)
+            break
+        }
+
+        // Find last newline within maxLen
+        let splitAt = remaining.lastIndexOf('\n', maxLen)
+        if (splitAt < maxLen * 0.3) {
+            // No good newline break — split at maxLen
+            splitAt = maxLen
+        }
+
+        chunks.push(remaining.slice(0, splitAt))
+        remaining = remaining.slice(splitAt).replace(/^\n/, '') // trim leading newline from next chunk
+    }
+
+    return chunks
+}
+
+/**
  * Send a text message to a Telegram chat.
  * Supports Markdown formatting.
+ * Automatically splits messages longer than 4096 chars.
  */
 export async function sendTelegramMessage(chatId: number | string, text: string): Promise<TelegramResult> {
-    try {
-        // Telegram has a 4096 char limit per message
-        const truncated = text.slice(0, 4096)
-        return await telegramApiCall('sendMessage', {
-            chat_id: chatId,
-            text: truncated,
-            parse_mode: 'Markdown',
-        })
-    } catch (error) {
-        console.error('[Telegram] Error sending message:', error)
-        // Retry without Markdown if parse_mode causes issues
+    const chunks = splitMessage(text, 4096)
+    let lastResult: TelegramResult = { success: true, data: null }
+
+    for (const chunk of chunks) {
         try {
-            return await telegramApiCall('sendMessage', {
+            lastResult = await telegramApiCall('sendMessage', {
                 chat_id: chatId,
-                text: text.slice(0, 4096),
+                text: chunk,
+                parse_mode: 'Markdown',
             })
-        } catch (retryError) {
-            return { success: false, error: String(retryError) }
+        } catch (error) {
+            console.error('[Telegram] Error sending message:', error)
+            // Retry without Markdown if parse_mode causes issues
+            try {
+                lastResult = await telegramApiCall('sendMessage', {
+                    chat_id: chatId,
+                    text: chunk,
+                })
+            } catch (retryError) {
+                return { success: false, error: String(retryError) }
+            }
         }
     }
+
+    return lastResult
 }
 
 /**

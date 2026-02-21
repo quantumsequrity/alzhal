@@ -121,7 +121,7 @@ export const cache = new MemoryCache()
 export const CACHE_TTL = {
   INGREDIENT: 7 * 24 * 60 * 60 * 1000, // 7 days
   PRODUCT: 24 * 60 * 60 * 1000, // 1 day
-  EXTERNAL_API: 12 * 60 * 60 * 1000, // 12 hours
+  EXTERNAL_API: 1 * 60 * 60 * 1000, // 1 hour (D1 is now persistent cache)
   EXTERNAL_API_FAILURE: 5 * 60 * 1000, // 5 minutes for failed lookups
   STATS: 5 * 60 * 1000, // 5 minutes
 }

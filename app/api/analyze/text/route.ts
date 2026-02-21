@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { analyzeIngredientBatch, callGeminiWithRetry, model } from '@/lib/gemini'
 import { getEnrichedDataForBatch, formatEnrichedDataForPrompt, EnrichedIngredientData } from '@/lib/external-data'
-import { supabase } from '@/lib/supabase'
+import { query, execute, generateId, parseJsonColumn } from '@/lib/db'
 import { rateLimit, getClientIdentifier, sanitizeInput, validateLanguage, validateOrigin, getSecurityHeaders } from '@/lib/security'
 import { getCachedIngredient, cacheIngredient } from '@/lib/cache'
 import { lookupIngredientsContext, lookupProductContext } from '@/lib/product-data'
@@ -96,6 +96,15 @@ Rules:
       return NextResponse.json({ error: 'No valid ingredient names found' }, { status: 400, headers: getSecurityHeaders() })
     }
 
+    // Deduplicate ingredient names (case-insensitive)
+    const seen = new Set<string>()
+    ingredientNames = ingredientNames.filter(name => {
+      const lower = name.toLowerCase()
+      if (seen.has(lower)) return false
+      seen.add(lower)
+      return true
+    })
+
     // Check cache for already-analyzed ingredients
     const cachedResults: Record<string, any> = {}
     const needsDbLookup: string[] = []
@@ -112,12 +121,14 @@ Rules:
 
     // Batch DB lookup instead of N+1 individual queries
     if (needsDbLookup.length > 0) {
-      const { data: dbIngredients } = await supabase
-        .from('ingredients')
-        .select('*')
-        .in('name', needsDbLookup)
+      const placeholders = needsDbLookup.map(() => '?').join(',')
+      const dbIngredients = await query<any>(`SELECT * FROM ingredients WHERE name IN (${placeholders})`, needsDbLookup)
 
-      const dbMap = new Map((dbIngredients || []).map((i: any) => [i.name.toLowerCase(), i]))
+      const dbMap = new Map(dbIngredients.map((i: any) => {
+        i.concerns = parseJsonColumn(i.concerns, [])
+        i.banned_in = parseJsonColumn(i.banned_in, [])
+        return [i.name.toLowerCase(), i]
+      }))
 
       for (const name of needsDbLookup) {
         const dbIngredient = dbMap.get(name.toLowerCase())
@@ -197,26 +208,19 @@ Rules:
 
         const concerns = analysisData.concerns || []
         let safetyVerdict = analysisData.safety_verdict || "CAUTION"
+
+        // FDA data is INFO-ONLY — added to concerns for transparency but
+        // NEVER changes the safety verdict. FDA recalls are mostly about
+        // batch contamination or labeling errors, not ingredient safety.
+        // Only banned_countries (below) can escalate the verdict.
         if (officialData.fda_reports > 0) {
           concerns.push(`FDA Adverse Events: ${officialData.fda_reports} reports filed`)
-          if (officialData.fda_reports >= 100 && safetyVerdict === "SAFE") {
-            safetyVerdict = "CAUTION"
-          }
-          if (officialData.fda_reports >= 1000) {
-            safetyVerdict = "AVOID"
-          }
         }
         if (officialData.fda_recalls && officialData.fda_recalls.total_recalls > 0) {
           concerns.push(`FDA Recalls: ${officialData.fda_recalls.total_recalls} recall(s) found`)
-          if (safetyVerdict === "SAFE") {
-            safetyVerdict = "CAUTION"
-          }
-          if (officialData.fda_recalls.total_recalls >= 5) {
-            safetyVerdict = "AVOID"
-          }
         }
 
-        const bannedCountries = analysisData.banned_countries || []
+        const bannedCountries = Array.isArray(analysisData.banned_countries) ? analysisData.banned_countries : []
         if (bannedCountries.length > 0 && safetyVerdict !== "BANNED") {
           safetyVerdict = "BANNED"
         }
@@ -248,24 +252,22 @@ Rules:
           sources_checked: officialData.sources_checked || [],
         }
 
-        // Save to DB (upsert to handle concurrent duplicate inserts)
-        const { error: insertError } = await supabase.from('ingredients').upsert({
-          name,
-          analyzed_count: 1,
-          simple_name: analysis.simple_name,
-          chemical_formula: analysis.chemical_formula,
-          raw_materials: analysis.raw_materials,
-          common_uses: analysis.common_uses,
-          fda_status: analysis.fda_status,
-          eu_status: analysis.eu_status,
-          who_status: analysis.who_status,
-          banned_in: analysis.banned_in,
-          safe_limit: analysis.safe_limit,
-          concerns: analysis.concerns,
-          category: analysis.category,
-        }, { onConflict: 'name', ignoreDuplicates: true })
-        if (insertError) {
-          console.error(`[TextAnalysis] DB save failed for ${name}:`, insertError.message)
+        // Save to DB (INSERT OR IGNORE to handle concurrent duplicate inserts)
+        try {
+          const ingId = generateId()
+          await execute(
+            `INSERT INTO ingredients (id, name, analyzed_count, simple_name, chemical_formula, raw_materials, common_uses, fda_status, eu_status, who_status, banned_in, safe_limit, concerns, category)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(name) DO NOTHING`,
+            [ingId, name, 1, analysis.simple_name, analysis.chemical_formula,
+             typeof analysis.raw_materials === 'string' ? analysis.raw_materials : JSON.stringify(analysis.raw_materials || null),
+             typeof analysis.common_uses === 'string' ? analysis.common_uses : JSON.stringify(analysis.common_uses || null),
+             analysis.fda_status, analysis.eu_status, analysis.who_status,
+             JSON.stringify(analysis.banned_in), analysis.safe_limit,
+             JSON.stringify(analysis.concerns), analysis.category]
+          )
+        } catch (e) {
+          console.error(`[TextAnalysis] DB save failed for ${name}:`, e)
         }
 
         cacheIngredient(name, analysis)
@@ -279,15 +281,14 @@ Rules:
     // Log scan
     let scanId: string | undefined
     try {
-      const { data: scanData } = await supabase.from('scans').insert({
-        input_type: 'web_text',
-        language,
-        ingredients_found: ingredientNames,
-        response_sent: true,
-      }).select('id').single()
-      scanId = scanData?.id
+      scanId = generateId()
+      await execute(
+        `INSERT INTO scans (id, input_type, language, ingredients_found, response_sent) VALUES (?, ?, ?, ?, 1)`,
+        [scanId, 'web_text', language, JSON.stringify(ingredientNames)]
+      )
     } catch (e) {
       console.error('Failed to log scan:', e)
+      scanId = undefined
     }
 
     return NextResponse.json({

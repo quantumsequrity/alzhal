@@ -70,16 +70,8 @@ export function formatIngredientReport(result: AnalysisResult, options: FormatOp
   responseText += `Found ${result.ingredients.length} ingredients.\n`
   responseText += `---\n\n`
 
-  // Calculate how many ingredients we can show given char budget
-  const headerLen = responseText.length
-  const footerLen = 200 // approximate footer size
-  const availableChars = maxChars - headerLen - footerLen
-  const charsPerIngredient = 300
-  const maxIngredients = Math.max(5, Math.min(15, Math.floor(availableChars / charsPerIngredient)))
-
-  const topIngredients = result.ingredients.slice(0, maxIngredients)
-
-  for (const item of topIngredients) {
+  // Build ALL ingredient entries — no truncation
+  for (const item of result.ingredients) {
     const analysis = item.analysis
     const verdict = getVerdict(item)
     const icon = getIcon(verdict)
@@ -114,10 +106,6 @@ export function formatIngredientReport(result: AnalysisResult, options: FormatOp
     }
 
     responseText += `\n`
-  }
-
-  if (result.ingredients.length > maxIngredients) {
-    responseText += `...and ${result.ingredients.length - maxIngredients} more ingredients.\n`
   }
 
   responseText += `---\n`

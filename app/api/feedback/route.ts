@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { execute, generateId } from '@/lib/db'
 import { rateLimit, getClientIdentifier, sanitizeInput, getSecurityHeaders } from '@/lib/security'
 
 const limiter = rateLimit({ windowMs: 60000, maxRequests: 10 })
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { scan_id, rating, comment } = body
+    const { scan_id, rating, comment, ingredient_name } = body
 
     if (!scan_id || typeof scan_id !== 'string') {
       return NextResponse.json({ error: 'scan_id is required' }, { status: 400, headers: getSecurityHeaders() })
@@ -24,15 +24,15 @@ export async function POST(req: NextRequest) {
     }
 
     const sanitizedComment = comment ? sanitizeInput(String(comment)).slice(0, 500) : null
+    const sanitizedIngredient = ingredient_name ? sanitizeInput(String(ingredient_name)).slice(0, 200) : null
 
-    const { error } = await supabase.from('feedback').insert({
-      scan_id,
-      rating,
-      comment: sanitizedComment,
-    })
-
-    if (error) {
-      console.error('Feedback insert failed:', error)
+    try {
+      await execute(
+        'INSERT INTO feedback (id, scan_id, rating, comment, ingredient_name) VALUES (?, ?, ?, ?, ?)',
+        [generateId(), scan_id, rating, sanitizedComment, sanitizedIngredient]
+      )
+    } catch (e) {
+      console.error('Feedback insert failed:', e)
       return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500, headers: getSecurityHeaders() })
     }
 

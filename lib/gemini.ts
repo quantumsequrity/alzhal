@@ -272,15 +272,22 @@ Return a JSON Object where KEY = ingredient name, VALUE = analysis object:
 }
 
 RULES:
-1. If no official data exists, use "Data not available" - DO NOT guess.
-2. safety_verdict MUST be based on official banned/restricted lists only.
-3. sources_cited MUST reference specific regulation numbers.
-4. Zero official data = safety_verdict: "CAUTION", concerns: ["No official data found"]
-5. Return ONLY valid JSON, no markdown code blocks, no explanation text.
+1. If no official data exists for a SPECIFIC regulatory field, use "Data not available" - DO NOT guess.
+2. safety_verdict MUST be based on official banned/restricted lists AND common knowledge of the ingredient.
+3. sources_cited MUST reference specific regulation numbers where available.
+4. CRITICAL VERDICT LOGIC:
+   - Natural whole foods, common spices, herbs, grains, dairy, fruits, vegetables, nuts, seeds, and traditional cooking ingredients (e.g. turmeric, cumin, black pepper, salt, sugar, garlic, ginger, wheat, milk, soy, coriander, cardamom, clove, nutmeg, fenugreek, aniseed, chilli powder, onion, palm oil, starch) are SAFE unless there is specific evidence of harm. These are foods humans have eaten for centuries — lack of a specific FDA/EU additive number does NOT make them unsafe.
+   - "Mixed spices", "Roasted spice powder", "Dried garlic", "Dehydrated onion" and similar generic food descriptions are SAFE.
+   - CAUTION is for synthetic additives, preservatives, colorants, or processed chemicals where regulatory data is incomplete or conflicting.
+   - AVOID is for ingredients with documented safety concerns from official sources.
+   - BANNED is only for ingredients explicitly prohibited by a regulatory body.
+   - Do NOT default to CAUTION just because an ingredient lacks a specific FDA GRAS number or EU E-number. Use your knowledge of whether it is a natural food vs a synthetic additive.
+5. Return ONLY valid JSON, no markdown code blocks, no explanation text. CRITICAL: The JSON keys MUST be the EXACT ingredient names as provided above — do NOT rename, rephrase, or reformat them. If the input says "Mixed spices", the key must be "Mixed spices", NOT "Mixed Spices" or "mixed_spices".
 6. limit_exceeded: set to null if no official limits exist. Only set exceeded=true if the typical use level in this product type exceeds the regulatory max.
 7. regional_ban_conflicts: list cases where the ingredient is legal in one major market but banned/restricted in another. Empty array if no conflicts.
 8. simple_name MUST be in extremely simple language — imagine explaining to your grandmother who never went to school.
 9. safety_limits_per_100g.plain_english MUST be a single sentence a child could understand.
+10. concerns array should be EMPTY for natural safe ingredients. Only include concerns backed by official data or well-documented issues.
 `
 
     try {

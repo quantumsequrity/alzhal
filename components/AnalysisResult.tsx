@@ -205,6 +205,54 @@ function StatusCard({ flag, label, value }: { flag: string; label: string; value
 }
 
 /* ========================================
+   Per-Ingredient Feedback
+   ======================================== */
+
+function IngredientFeedback({ scanId, ingredientName, language }: { scanId: string; ingredientName: string; language: string }) {
+    const [submitted, setSubmitted] = useState<'up' | 'down' | null>(null)
+    const isHindi = language === 'Hindi'
+
+    const handleFeedback = async (rating: 'up' | 'down') => {
+        try {
+            const res = await fetch('/api/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scan_id: scanId, rating, ingredient_name: ingredientName }),
+            })
+            if (res.ok) setSubmitted(rating)
+        } catch { /* Non-blocking */ }
+    }
+
+    if (submitted) {
+        return (
+            <span className="text-[10px] text-gray-600">
+                {submitted === 'down' ? (isHindi ? 'गलत रिपोर्ट की गई' : 'Flagged') : (isHindi ? 'धन्यवाद' : 'Thanks')}
+            </span>
+        )
+    }
+
+    return (
+        <div className="flex items-center gap-1">
+            <span className="text-[10px] text-gray-600 mr-1">{isHindi ? 'सही है?' : 'Accurate?'}</span>
+            <button
+                onClick={(e) => { e.stopPropagation(); handleFeedback('up') }}
+                className="p-1 rounded hover:bg-green-500/10 text-gray-600 hover:text-green-400 transition"
+                title="Correct"
+            >
+                <ThumbsUp size={12} />
+            </button>
+            <button
+                onClick={(e) => { e.stopPropagation(); handleFeedback('down') }}
+                className="p-1 rounded hover:bg-red-500/10 text-gray-600 hover:text-red-400 transition"
+                title="Wrong verdict"
+            >
+                <ThumbsDown size={12} />
+            </button>
+        </div>
+    )
+}
+
+/* ========================================
    Feedback Buttons
    ======================================== */
 
@@ -531,7 +579,10 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
     const dangerCount = ingredients.filter(i => getVerdict(i) === 'danger').length
     const totalCount = ingredients.length
 
-    const safetyScore = Math.max(0, Math.min(100, Math.round(100 - (warningCount * 10) - (dangerCount * 25))))
+    // Weighted score: safe=1.0, warning=0.5, danger=0.0
+    const safetyScore = totalCount > 0
+        ? Math.round(((safeCount * 1.0 + warningCount * 0.5) / totalCount) * 100)
+        : 0
 
     let scoreColor = 'text-green-400'
     let scoreLabel = isHindi ? 'सुरक्षित' : 'Safe'
@@ -559,7 +610,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
         `Safety Score: ${safetyScore}/100 (${scoreLabel})\n\n` +
         `Total: ${totalCount} ingredients\n` +
         `Safe: ${safeCount} | Caution: ${warningCount} | Avoid: ${dangerCount}\n\n` +
-        `Analyzed on Consumer Truth\n` +
+        `Analyzed on Sage Insight\n` +
         `Data: FDA, EU CosIng, WHO, BIS, FSSAI, EPA`
 
     const filteredIngredients = filterVerdict === 'all'
@@ -1056,6 +1107,13 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                             <ExternalLink size={12} className="group-hover/link:translate-x-0.5 transition-transform" />
                                             View on EPA CompTox Dashboard
                                         </a>
+                                    )}
+
+                                    {/* Per-ingredient feedback */}
+                                    {data.scanId && (
+                                        <div className="pt-3 border-t border-white/5 flex justify-end">
+                                            <IngredientFeedback scanId={data.scanId} ingredientName={item.name} language={language} />
+                                        </div>
                                     )}
                                 </div>
                             </div>

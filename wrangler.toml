@@ -31,6 +31,11 @@ binding = "FOOD_META_DB"
 database_name = "consumer-truth-meta"
 database_id = "1c449560-9160-4442-bc77-a2b12473f284"
 
+[[d1_databases]]
+binding = "INGREDIENTS_REF_DB"
+database_name = "consumer-truth-ingredients-ref"
+database_id = "a1d6b2d8-9f8a-448b-9fef-8d43b8f63a1f"
+
 [ai]
 binding = "AI"
 

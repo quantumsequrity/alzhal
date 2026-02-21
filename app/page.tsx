@@ -110,7 +110,15 @@ function VoiceRecorder({ onRecordComplete, isAnalyzing, language }: {
             setRecordingTime(0)
 
             timerRef.current = setInterval(() => {
-                setRecordingTime(prev => prev + 1)
+                setRecordingTime(prev => {
+                    // Auto-stop at 5 minutes to prevent unbounded recording
+                    if (prev + 1 >= 300) {
+                        mediaRecorderRef.current?.stop()
+                        setIsRecording(false)
+                        if (timerRef.current) clearInterval(timerRef.current)
+                    }
+                    return prev + 1
+                })
             }, 1000)
         } catch (err) {
             console.error('Microphone access denied:', err)
@@ -190,7 +198,7 @@ function TutorialModal({ language, onClose }: { language: string; onClose: () =>
             title: isHindi ? 'नमस्ते!' : 'Welcome!',
             description: isHindi
                 ? 'यह ऐप आपको बताता है कि आपके खाने-पीने की चीज़ों में क्या है - सुरक्षित है या नहीं।'
-                : 'Consumer Truth tells you exactly what is in your food, cosmetics, and household products - and whether it is safe.',
+                : 'Sage Insight tells you exactly what is in your food, cosmetics, and household products - and whether it is safe.',
             icon: Shield,
         },
         {
@@ -479,7 +487,7 @@ export default function Home() {
             <nav className="sticky top-0 z-50 w-full bg-[#09090b]/80 backdrop-blur-md border-b border-zinc-800/50">
                 <div className="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
                     <span className="font-semibold text-sm tracking-tight text-white">
-                        {isHindi ? 'उपभोक्ता सच' : 'Consumer Truth'}
+                        {isHindi ? 'सेज इनसाइट' : 'Sage Insight'}
                     </span>
 
                     <div className="flex items-center gap-2">

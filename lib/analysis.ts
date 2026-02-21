@@ -1,5 +1,5 @@
 import { analyzeImage, analyzeIngredientBatch, translateContent } from './gemini'
-import { query, queryOne, execute, generateId } from './db'
+import { query, queryOne, execute, generateId, parseJsonColumn } from './db'
 import { getEnrichedDataForBatch, formatEnrichedDataForPrompt, EnrichedIngredientData } from './external-data'
 import { lookupIngredientsContext, lookupProductContext } from './product-data'
 import { mergeOcrResults } from './ocr-merge'
@@ -75,17 +75,26 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
     // 3. Analyze Ingredients (BATCH MODE)
     const analyzedIngredients = []
 
-    // A. Identify which ingredients need analysis
+    // A. Identify which ingredients need analysis (case-insensitive lookup)
+    // Deduplicate ingredients (case-insensitive) to avoid redundant Gemini/DB calls
+    const deduped = new Map<string, (typeof productData.ingredients)[number]>()
+    for (const item of productData.ingredients) {
+        const lower = item.name.toLowerCase()
+        if (!deduped.has(lower)) deduped.set(lower, item)
+    }
+    productData.ingredients = [...deduped.values()]
+
     const ingredientNames = productData.ingredients.map((i: { name: string }) => i.name)
-    const placeholders = ingredientNames.map(() => '?').join(',')
-    const cachedIngredients = ingredientNames.length > 0
-        ? await query<any>(`SELECT * FROM ingredients WHERE name IN (${placeholders})`, ingredientNames)
+    const lowerNames = ingredientNames.map((n: string) => n.toLowerCase())
+    const placeholders = lowerNames.map(() => '?').join(',')
+    const cachedIngredients = lowerNames.length > 0
+        ? await query<any>(`SELECT * FROM ingredients WHERE LOWER(name) IN (${placeholders})`, lowerNames)
         : []
 
     const cachedMap = new Map(cachedIngredients.map((i: any) => {
         // Parse JSON text columns from D1
-        if (typeof i.concerns === 'string') try { i.concerns = JSON.parse(i.concerns) } catch { i.concerns = [] }
-        if (typeof i.banned_in === 'string') try { i.banned_in = JSON.parse(i.banned_in) } catch { i.banned_in = [] }
+        i.concerns = parseJsonColumn(i.concerns, [])
+        i.banned_in = parseJsonColumn(i.banned_in, [])
         return [i.name.toLowerCase(), i]
     }))
     const needsAnalysis: string[] = []
@@ -142,9 +151,24 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
 
         // Build case-insensitive lookup: map lowercase key to first matching result
         for (const [key, value] of Object.entries(rawBatchResults)) {
-            const lowerKey = key.toLowerCase()
+            const lowerKey = key.toLowerCase().trim()
             if (!(lowerKey in batchResults)) {
                 batchResults[lowerKey] = value
+            }
+        }
+
+        // Fuzzy match: if Gemini returned slightly different key names, try to match them
+        for (const name of needsAnalysis) {
+            const lowerName = name.toLowerCase()
+            if (lowerName in batchResults) continue
+            // Try normalized match: strip trailing dots and extra whitespace
+            const normalizedName = lowerName.replace(/\.$/, '').trim()
+            for (const batchKey of Object.keys(batchResults)) {
+                const normalizedKey = batchKey.replace(/\.$/, '').trim()
+                if (normalizedKey === normalizedName || batchKey.includes(lowerName) || lowerName.includes(batchKey) || normalizedKey.includes(normalizedName) || normalizedName.includes(normalizedKey)) {
+                    batchResults[lowerName] = batchResults[batchKey]
+                    break
+                }
             }
         }
     }
@@ -183,33 +207,24 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
 
             let concerns = finalAnalysisData.concerns || []
             let safetyVerdict = finalAnalysisData.safety_verdict || "Caution"
+            const geminiVerdict = safetyVerdict.toUpperCase()
 
+            // FDA data is INFO-ONLY — added to concerns for transparency but
+            // NEVER changes the safety verdict. FDA recalls are mostly about
+            // batch contamination or labeling errors, not ingredient safety.
+            // Only banned_countries (below) can escalate the verdict.
             if (officialData.fda_reports > 0) {
                 concerns.push(`FDA Adverse Events: ${officialData.fda_reports} reports filed.`)
-                // Escalate verdict based on FDA adverse event volume
-                if (officialData.fda_reports >= 100 && safetyVerdict === "SAFE") {
-                    safetyVerdict = "CAUTION"
-                }
-                if (officialData.fda_reports >= 1000) {
-                    safetyVerdict = "AVOID"
-                }
             }
             if (officialData.fda_recalls && officialData.fda_recalls.total_recalls > 0) {
                 concerns.push(`FDA Recalls: ${officialData.fda_recalls.total_recalls} recall(s) found.`)
-                // Any FDA recall escalates at least to CAUTION
-                if (safetyVerdict === "SAFE") {
-                    safetyVerdict = "CAUTION"
-                }
-                if (officialData.fda_recalls.total_recalls >= 5) {
-                    safetyVerdict = "AVOID"
-                }
             }
             if (officialData.cas_number !== "Unknown") {
                  finalAnalysisData.chemical_formula = `${finalAnalysisData.chemical_formula || ''} (CAS: ${officialData.cas_number})`
             }
 
             // Populate banned_in from enriched data regardless of Gemini's verdict
-            const bannedCountries = finalAnalysisData.banned_countries || []
+            const bannedCountries = Array.isArray(finalAnalysisData.banned_countries) ? finalAnalysisData.banned_countries : []
             if (bannedCountries.length > 0 && safetyVerdict !== "BANNED") {
                 safetyVerdict = "BANNED"
             }
@@ -235,6 +250,11 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
             if (isValidAnalysis) {
                 const ingId = generateId()
                 try {
+                    // Check for existing entry (case-insensitive) before inserting
+                    const existing = await queryOne<{ id: string }>('SELECT id FROM ingredients WHERE LOWER(name) = LOWER(?)', [analysisToSave.name])
+                    if (existing) {
+                        console.log(`[Analysis] Skipping DB save for ${name} (case-insensitive match exists)`)
+                    } else {
                     await execute(
                         `INSERT INTO ingredients (id, name, analyzed_count, simple_name, chemical_formula, raw_materials, common_uses, fda_status, eu_status, who_status, banned_in, safe_limit, concerns, category)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -247,6 +267,7 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
                          JSON.stringify(analysisToSave.banned_in), analysisToSave.safe_limit,
                          JSON.stringify(analysisToSave.concerns), analysisToSave.category]
                     )
+                    }
                 } catch (e) {
                     console.error(`[Analysis] DB save failed for ${name}:`, e)
                 }

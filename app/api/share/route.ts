@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { execute } from '@/lib/db'
 import { rateLimit, getClientIdentifier, getSecurityHeaders } from '@/lib/security'
 
 const limiter = rateLimit({ windowMs: 60000, maxRequests: 20 })
@@ -23,23 +23,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'method must be "whatsapp" or "copy"' }, { status: 400, headers: getSecurityHeaders() })
     }
 
-    // Atomic increment using RPC, with fallback to read-then-write
-    const { error: rpcError } = await supabase.rpc('increment_share_count', { scan_uuid: scan_id })
-    if (rpcError) {
-      // Fallback if RPC doesn't exist: non-atomic but functional
-      const { data: current } = await supabase
-          .from('scans')
-          .select('share_count')
-          .eq('id', scan_id)
-          .single()
-
-      if (current) {
-          await supabase
-              .from('scans')
-              .update({ share_count: (current.share_count || 0) + 1 })
-              .eq('id', scan_id)
-      }
-    }
+    // Atomic increment — single SQL statement, no RPC needed
+    await execute('UPDATE scans SET share_count = share_count + 1 WHERE id = ?', [scan_id])
 
     return NextResponse.json({ success: true }, { headers: getSecurityHeaders() })
   } catch (error) {

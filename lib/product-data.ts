@@ -1,5 +1,3 @@
-import { supabase } from './supabase'
-
 // --- Types ---
 
 export interface ProductRecord {
@@ -92,7 +90,7 @@ interface D1PreparedStatement {
 
 /**
  * Get D1 database bindings if running on Cloudflare Workers.
- * Returns null in local dev (falls back to Supabase).
+ * Returns null if not available (e.g. during build).
  */
 function getD1(): D1Database | null {
   try {
@@ -144,46 +142,26 @@ function toProductRecord(row: Record<string, any>): ProductRecord {
 // --- Public Search Functions ---
 
 /**
- * Search for a product by name.
- * Uses D1 on Cloudflare Workers, falls back to Supabase in local dev.
+ * Search for a product by name using D1.
  */
 export async function searchProductByName(name: string): Promise<ProductRecord | null> {
   if (!name || name.trim().length < 2) return null
   const q = name.trim().slice(0, 200)
 
   const db = getD1()
-  if (db) {
-    const row = await db
-      .prepare('SELECT * FROM food_products WHERE product_name LIKE ?1 LIMIT 1')
-      .bind(`%${q}%`)
-      .first()
-    if (row) return toProductRecord(row)
+  if (!db) return null
 
-    const fallback = await db
-      .prepare('SELECT * FROM food_products WHERE product_name LIKE ?1 OR brands LIKE ?1 LIMIT 1')
-      .bind(`%${q}%`)
-      .first()
-    return fallback ? toProductRecord(fallback) : null
-  }
+  const row = await db
+    .prepare('SELECT * FROM food_products WHERE product_name LIKE ?1 LIMIT 1')
+    .bind(`%${q}%`)
+    .first()
+  if (row) return toProductRecord(row)
 
-  // Supabase fallback for local dev
-  const { data } = await supabase
-    .from('food_products')
-    .select('*')
-    .ilike('product_name', `%${q}%`)
-    .limit(1)
-    .maybeSingle()
-
-  if (data) return toProductRecord(data)
-
-  const { data: fb } = await supabase
-    .from('food_products')
-    .select('*')
-    .or(`product_name.ilike.%${q}%,brands.ilike.%${q}%`)
-    .limit(1)
-    .maybeSingle()
-
-  return fb ? toProductRecord(fb) : null
+  const fallback = await db
+    .prepare('SELECT * FROM food_products WHERE product_name LIKE ?1 OR brands LIKE ?1 LIMIT 1')
+    .bind(`%${q}%`)
+    .first()
+  return fallback ? toProductRecord(fallback) : null
 }
 
 /**
@@ -193,23 +171,14 @@ export async function searchIngredientInfo(ingredient: string): Promise<Ingredie
   if (!ingredient || ingredient.trim().length < 2) return null
   const q = ingredient.trim().slice(0, 200)
 
-  let rows: Record<string, any>[]
-
   const db = getD1()
-  if (db) {
-    const result = await db
-      .prepare('SELECT product_name, categories FROM food_products WHERE ingredients_text LIKE ?1 LIMIT ?2')
-      .bind(`%${q}%`, MAX_SEARCH_RESULTS)
-      .all()
-    rows = result.results as Record<string, any>[]
-  } else {
-    const { data } = await supabase
-      .from('food_products')
-      .select('product_name, categories')
-      .ilike('ingredients_text', `%${q}%`)
-      .limit(MAX_SEARCH_RESULTS)
-    rows = data || []
-  }
+  if (!db) return null
+
+  const result = await db
+    .prepare('SELECT product_name, categories FROM food_products WHERE ingredients_text LIKE ?1 LIMIT ?2')
+    .bind(`%${q}%`, MAX_SEARCH_RESULTS)
+    .all()
+  const rows = result.results as Record<string, any>[]
 
   if (rows.length === 0) return null
 
@@ -240,22 +209,13 @@ export async function searchProductsByBarcode(barcode: string): Promise<ProductR
   const code = barcode.trim().slice(0, 20)
 
   const db = getD1()
-  if (db) {
-    const row = await db
-      .prepare('SELECT * FROM food_products WHERE code = ?1 LIMIT 1')
-      .bind(code)
-      .first()
-    return row ? toProductRecord(row) : null
-  }
+  if (!db) return null
 
-  const { data } = await supabase
-    .from('food_products')
-    .select('*')
-    .eq('code', code)
-    .limit(1)
-    .maybeSingle()
-
-  return data ? toProductRecord(data) : null
+  const row = await db
+    .prepare('SELECT * FROM food_products WHERE code = ?1 LIMIT 1')
+    .bind(code)
+    .first()
+  return row ? toProductRecord(row) : null
 }
 
 /**
@@ -267,23 +227,13 @@ export async function searchProducts(query: string, maxResults: number = MAX_SEA
   const limit = Math.min(maxResults, MAX_SEARCH_RESULTS)
 
   const db = getD1()
-  if (db) {
-    const result = await db
-      .prepare('SELECT * FROM food_products WHERE product_name LIKE ?1 OR brands LIKE ?1 OR ingredients_text LIKE ?1 LIMIT ?2')
-      .bind(`%${q}%`, limit)
-      .all()
-    return (result.results as Record<string, any>[])
-      .map(toProductRecord)
-      .filter(p => p.product_name || p.brands || p.ingredients_text)
-  }
+  if (!db) return []
 
-  const { data } = await supabase
-    .from('food_products')
-    .select('*')
-    .or(`product_name.ilike.%${q}%,brands.ilike.%${q}%,ingredients_text.ilike.%${q}%`)
-    .limit(limit)
-
-  return (data || [])
+  const result = await db
+    .prepare('SELECT * FROM food_products WHERE product_name LIKE ?1 OR brands LIKE ?1 OR ingredients_text LIKE ?1 LIMIT ?2')
+    .bind(`%${q}%`, limit)
+    .all()
+  return (result.results as Record<string, any>[])
     .map(toProductRecord)
     .filter(p => p.product_name || p.brands || p.ingredients_text)
 }

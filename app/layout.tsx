@@ -9,12 +9,12 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-    title: 'Consumer Truth - Know What You Consume',
+    title: 'Sage Insight - Know What You Consume',
     description: 'AI-powered ingredient analysis against FDA, EU, WHO & BIS/FSSAI safety standards. Instant safety reports for food, cosmetics, household products & more.',
     keywords: ['ingredient analysis', 'food safety', 'cosmetic safety', 'FDA', 'FSSAI', 'consumer safety', 'product ingredients'],
-    authors: [{ name: 'Consumer Truth' }],
+    authors: [{ name: 'Sage Insight' }],
     openGraph: {
-        title: 'Consumer Truth - Know What You Consume',
+        title: 'Sage Insight - Know What You Consume',
         description: 'Instant AI analysis of product ingredients against global safety standards.',
         type: 'website',
     },
