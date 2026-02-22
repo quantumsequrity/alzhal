@@ -27,8 +27,29 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey || '')
 
-// Use Gemini 2.0 Flash for speed and multimodal capabilities
-export const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+// Get temperature from environment (default: 0.2 for deterministic analysis)
+const GEMINI_TEMPERATURE = parseFloat(process.env.GEMINI_TEMPERATURE || '0.2')
+
+// Deterministic model for ingredient analysis (low temperature for consistency)
+export const modelDeterministic = genAI.getGenerativeModel({
+  model: 'gemini-2.0-flash',
+  generationConfig: {
+    temperature: GEMINI_TEMPERATURE,
+    topP: 0.95,
+    topK: 40,
+  },
+})
+
+// Creative model for OCR/audio transcription (higher temperature for natural variation)
+export const modelCreative = genAI.getGenerativeModel({
+  model: 'gemini-2.0-flash',
+  generationConfig: {
+    temperature: 0.7,
+  },
+})
+
+// Legacy export for backward compatibility
+export const model = modelDeterministic
 
 // Sanitize ingredient names to prevent prompt injection
 function sanitizeIngredientName(name: string): string {
@@ -97,7 +118,8 @@ Return ONLY the transcribed text, nothing else.`
     },
   }
 
-  const result = await callGeminiWithRetry(model, [prompt, audioPart])
+  // Use creative model for transcription (natural variation is acceptable)
+  const result = await callGeminiWithRetry(modelCreative, [prompt, audioPart])
   const response = await result.response
   return response.text()
 }
@@ -157,7 +179,8 @@ export async function analyzeImage(imageBuffer: Buffer, mimeType: string) {
   }
 
   try {
-    const result = await callGeminiWithRetry(model, [prompt, imagePart])
+    // Use creative model for OCR (extraction benefits from flexibility)
+    const result = await callGeminiWithRetry(modelCreative, [prompt, imagePart])
     const response = await result.response
     const text = response.text()
 
@@ -291,7 +314,9 @@ RULES:
 `
 
     try {
-      const result = await callGeminiWithRetry(model, prompt)
+      // Use deterministic model for ingredient analysis (consistency is critical)
+      console.log(`[Gemini] Using temperature=${GEMINI_TEMPERATURE} for batch ${chunkIndex + 1}/${chunks.length}`)
+      const result = await callGeminiWithRetry(modelDeterministic, prompt)
       const response = await result.response
       const text = response.text()
 
@@ -471,7 +496,9 @@ STRICT RULES:
 ANALYZE NOW.
   `
 
-  const result = await callGeminiWithRetry(model, prompt)
+  // Use deterministic model for single ingredient analysis (consistency is critical)
+  console.log(`[Gemini] Using temperature=${GEMINI_TEMPERATURE} for ingredient: ${ingredientName}`)
+  const result = await callGeminiWithRetry(modelDeterministic, prompt)
   const response = await result.response
   const text = response.text()
 
@@ -515,7 +542,8 @@ export async function translateContent(content: string, targetLanguage: string) 
     - Keep emojis
   `
 
-  const result = await callGeminiWithRetry(model, prompt)
+  // Use creative model for translation (natural language flow is acceptable)
+  const result = await callGeminiWithRetry(modelCreative, prompt)
   const response = await result.response
   return response.text()
 }
