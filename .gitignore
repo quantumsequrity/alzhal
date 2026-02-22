@@ -41,6 +41,12 @@ yarn-error.log*
 *.csv
 *.zip
 *.tar.gz
+scripts/d1-import.sql
+scripts/d1-meta.sql
+scripts/d1-nutrition.sql
+scripts/d1-ingredients-ref-unified.sql
+scripts/chunks/
+scripts/bulk-data/
 
 # Stray test images
 *.webp
