@@ -46,6 +46,22 @@ interface Ingredient {
         }
         sources_cited?: string[]
         epa_link?: string
+        // v2-grounded fields — present when the grounded pipeline served this ingredient
+        _grounded?: boolean
+        _per_jurisdiction?: Array<{
+            jurisdiction: string
+            status: string
+            regulation_ref: string | null
+            source_url: string
+            source_name: string
+        }>
+        _citations?: Array<{
+            fact_type: string
+            jurisdiction: string
+            source_name: string
+            source_url: string
+            snapshot_date: string
+        }>
         limit_exceeded?: {
             fssai?: { max_allowed?: string; typical_use?: string; exceeded?: boolean }
             eu?: { max_allowed?: string; typical_use?: string; exceeded?: boolean }
@@ -1293,6 +1309,50 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                                     <span key={i} className="px-2 py-1 text-[10px] rounded-lg bg-blue-500/8 text-blue-400/80 border border-blue-500/15">
                                                         {source}
                                                     </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* v2-grounded: per-jurisdiction records with clickable source URLs.
+                                         Only renders when the grounded pipeline supplied this analysis. */}
+                                    {analysis._grounded && analysis._per_jurisdiction && analysis._per_jurisdiction.length > 0 && (
+                                        <div className="pt-3 border-t border-white/5">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h5 className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-wider flex items-center gap-1">
+                                                    <ShieldCheck size={11} />
+                                                    {isHindi ? 'सरकारी रिकॉर्ड' : 'Official records'}
+                                                </h5>
+                                                <span
+                                                    className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                    title="This verdict was derived from structured regulatory facts in the database, not from an AI-generated claim. Every row below has a clickable source URL."
+                                                >
+                                                    grounded
+                                                </span>
+                                            </div>
+                                            <div className="space-y-1">
+                                                {analysis._per_jurisdiction.map((r, i) => (
+                                                    <a
+                                                        key={i}
+                                                        href={r.source_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-emerald-500/30 transition group/reg"
+                                                    >
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-0.5">
+                                                                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">
+                                                                    {r.jurisdiction.replace(/_/g, ' ')}
+                                                                </span>
+                                                                {r.regulation_ref && (
+                                                                    <span className="text-[9px] font-mono text-gray-500">{r.regulation_ref}</span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-gray-300 leading-snug">{r.status}</p>
+                                                            <p className="text-[9px] text-gray-500 mt-0.5">{r.source_name}</p>
+                                                        </div>
+                                                        <ExternalLink size={11} className="text-gray-500 group-hover/reg:text-emerald-400 shrink-0 mt-0.5" />
+                                                    </a>
                                                 ))}
                                             </div>
                                         </div>
