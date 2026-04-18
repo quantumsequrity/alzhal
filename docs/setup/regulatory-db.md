@@ -165,6 +165,40 @@ for (const item of productData.ingredients) {
 
 The fallback flow is unchanged, so turning the flag off immediately reverts to the legacy behaviour.
 
+## Finishing the Open Food Facts ingest
+
+The ingester (`scripts/seed-openfoodfacts.py`) is ready but the 500 MB Parquet dump from Hugging Face throttles heavily. Two options:
+
+**Option A — persistent download (recommended, run overnight):**
+
+```bash
+curl -L -C - --retry 10 --retry-delay 30 --max-time 7200 \
+  -o scripts/bulk-data/openfoodfacts-food.parquet \
+  "https://huggingface.co/datasets/openfoodfacts/product-database/resolve/main/food.parquet?download=true"
+```
+
+The `-C -` resumes on retry, `--retry 10` keeps retrying after timeouts. Run this once; it may take 1–3 hours.
+
+**Option B — OFF static CSV (different host, may be faster):**
+
+```bash
+curl -L -o scripts/bulk-data/off-products.csv.gz \
+  "https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz"
+gunzip scripts/bulk-data/off-products.csv.gz
+```
+
+Then adapt `seed-openfoodfacts.py` to read CSV instead of Parquet (one-line swap — `csv.DictReader` instead of `pq.iter_batches`).
+
+**After the file is on disk:**
+
+```bash
+python3 scripts/seed-openfoodfacts.py --limit 200000
+npx wrangler d1 execute consumer-truth-ingredients-ref --remote \
+  --file=scripts/d1-regulatory-off.sql
+```
+
+This populates the `product` + `product_alias` tables (~200K barcode-keyed products with ingredients_text, nutrition, additive tags). Then the analysis pipeline can short-circuit "product scanned → known barcode → pre-parsed ingredient list" paths.
+
 ## Adding more sources
 
 Each ingester produces its own `scripts/d1-regulatory-{source}.sql` file. Planned ingesters (in priority order):
