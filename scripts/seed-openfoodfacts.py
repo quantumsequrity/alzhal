@@ -95,6 +95,35 @@ def first_non_empty(row, *keys):
     return None
 
 
+def extract_multilang(value, preferred_langs=('en', 'main')):
+    """OFF parquet stores name / ingredients_text as List<{lang, text}>.
+    Extract the best-available text: prefer English, fall back to 'main',
+    then the first available. Returns None if no usable text."""
+    if value is None:
+        return None
+    # Plain string (older schema / some columns)
+    if isinstance(value, str):
+        return value.strip() or None
+    # List of dicts with lang/text
+    if isinstance(value, list):
+        # Dict-style entries
+        for pref in preferred_langs:
+            for entry in value:
+                if isinstance(entry, dict) and entry.get('lang') == pref:
+                    t = entry.get('text')
+                    if t and isinstance(t, str) and t.strip():
+                        return t.strip()
+        # Fallback: first non-empty text
+        for entry in value:
+            if isinstance(entry, dict):
+                t = entry.get('text')
+                if t and isinstance(t, str) and t.strip():
+                    return t.strip()
+            elif isinstance(entry, str) and entry.strip():
+                return entry.strip()
+    return None
+
+
 def row_completeness(row):
     n_filled = sum(1 for k in OPTIONAL_FIELDS
                    if row.get(k) is not None and row.get(k) != '' and row.get(k) != [])
@@ -182,18 +211,16 @@ def main():
                 continue
             seen_barcodes.add(barcode)
 
-            product_name = d.get('product_name', [None]*n)[i]
-            if not product_name or not isinstance(product_name, str):
-                continue
-            product_name = product_name.strip()[:200]
+            product_name = extract_multilang(d.get('product_name', [None]*n)[i])
             if not product_name:
                 continue
+            product_name = product_name[:200]
 
-            ingredients_text = d.get('ingredients_text', [None]*n)[i]
-            if not ingredients_text or not isinstance(ingredients_text, str):
+            ingredients_text = extract_multilang(d.get('ingredients_text', [None]*n)[i])
+            if not ingredients_text:
                 skipped_no_ingredients += 1
                 continue
-            ingredients_text = ingredients_text.strip()[:5000]
+            ingredients_text = ingredients_text[:5000]
 
             # Build a row dict for completeness check
             row = {f: d.get(f, [None]*n)[i] for f in cols}
