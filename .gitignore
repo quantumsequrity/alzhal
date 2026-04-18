@@ -48,6 +48,13 @@ scripts/d1-ingredients-ref-unified.sql
 scripts/chunks/
 scripts/bulk-data/
 
+# Large generated SQL dumps from seeders (regeneratable via seed-*.py/ts)
+scripts/d1-regulatory-off.sql
+scripts/d1-regulatory-off-chunk-*.sql
+scripts/d1-regulatory-usda-nutrition.sql
+scripts/d1-regulatory-ecfr-21.sql
+scripts/d1-regulatory-efsa.sql
+
 # Stray test images
 *.webp
 *.avif
