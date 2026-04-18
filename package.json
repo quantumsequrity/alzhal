@@ -10,11 +10,15 @@
     "lint": "next lint",
     "cf:build": "npx opennextjs-cloudflare build",
     "preview": "npm run cf:build && npx wrangler dev",
-    "deploy": "npm run cf:build && npx wrangler deploy"
+    "deploy": "npm run cf:build && npx wrangler deploy",
+    "seed:iarc": "npx tsx scripts/seed-iarc-cig.ts",
+    "eval": "npx tsx scripts/eval-harness.ts",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
+  "private": true,
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@tailwindcss/postcss": "^4.1.18",

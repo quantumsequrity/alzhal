@@ -4,6 +4,7 @@ import { getEnrichedDataForBatch, formatEnrichedDataForPrompt, EnrichedIngredien
 import { lookupIngredientsContext, lookupProductContext } from './product-data'
 import { mergeOcrResults } from './ocr-merge'
 import { extractWithWorkersAI } from './workers-ai-ocr'
+import { tryGroundedAsLegacyShape } from './analysis-grounded'
 
 /**
  * Rule-based verdict escalation using regulatory data.
@@ -256,7 +257,32 @@ export async function processImageAndAnalyze(imageBuffer: Buffer, mimeType: stri
     const preFilteredResults: Record<string, any> = {}
     const stillNeedsGemini: string[] = []
 
+    // C0. v2-grounded path: if the feature flag is on and the ingredient has
+    // regulatory facts in the CIG, use the deterministic renderer and skip
+    // Gemini for that ingredient. Falls through gracefully when the flag is
+    // off, the DB binding is missing, or the ingredient is not indexed.
+    const groundedHits = new Set<string>()
+    if (process.env.USE_GROUNDED_RENDERER === 'true' && needsAnalysis.length > 0) {
+        await Promise.all(needsAnalysis.map(async (name) => {
+            try {
+                const grounded = await tryGroundedAsLegacyShape(name, language)
+                if (grounded) {
+                    preFilteredResults[name.toLowerCase()] = grounded
+                    groundedHits.add(name)
+                    console.log(`[Grounded] Used CIG facts for ${name} → ${grounded.safety_verdict}`)
+                }
+            } catch (e) {
+                // Non-blocking — grounded is strictly additive to the existing pipeline.
+                console.warn(`[Grounded] Lookup failed for ${name}:`, (e as Error).message)
+            }
+        }))
+        if (groundedHits.size > 0) {
+            console.log(`[Grounded] Resolved ${groundedHits.size}/${needsAnalysis.length} ingredients from CIG, ${needsAnalysis.length - groundedHits.size} remain for enriched+Gemini path`)
+        }
+    }
+
     for (const name of needsAnalysis) {
+        if (groundedHits.has(name)) continue  // already handled by grounded path
         const enriched = enrichedData[name]
         if (!enriched) {
             stillNeedsGemini.push(name)
