@@ -4,11 +4,11 @@ import type { NutritionPanelData, NutritionValue } from '@/lib/nutrition-ocr'
 
 function fmt(v: NutritionValue): { perServing: string; per100g: string; dv: string } {
   const p = (n: number | null, unit: string | null) =>
-    n == null ? '—' : `${Number.isInteger(n) ? n : n.toFixed(1)} ${unit ?? ''}`.trim()
+    n == null ? '-' : `${Number.isInteger(n) ? n : n.toFixed(1)} ${unit ?? ''}`.trim()
   return {
     perServing: p(v.amount_per_serving, v.unit),
     per100g:    p(v.amount_per_100g, v.unit),
-    dv:         v.percent_dv == null ? '—' : `${v.percent_dv}%`,
+    dv:         v.percent_dv == null ? '-' : `${v.percent_dv}%`,
   }
 }
 
@@ -37,7 +37,7 @@ export function NutritionPanel({ data }: { data: NutritionPanelData }) {
     <section className="rounded-xl border border-slate-200 bg-white">
       <header className="flex items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Nutrition — transcribed from the label</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Nutrition - transcribed from the label</h3>
           <p className="mt-0.5 text-xs text-slate-500">
             Format: {LABEL_SOURCE_NAMES[data.source_label] ?? data.source_label}
             {data.serving_size && <> · Serving: <span className="font-medium">{data.serving_size}</span></>}
@@ -86,7 +86,7 @@ export function NutritionPanel({ data }: { data: NutritionPanelData }) {
               <li key={i} className="flex justify-between gap-2 text-slate-700">
                 <span>{m.name}</span>
                 <span className="tabular-nums text-slate-500">
-                  {m.amount_per_serving != null ? `${m.amount_per_serving} ${m.unit}` : '—'}
+                  {m.amount_per_serving != null ? `${m.amount_per_serving} ${m.unit}` : '-'}
                 </span>
               </li>
             ))}

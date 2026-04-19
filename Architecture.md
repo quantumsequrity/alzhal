@@ -361,7 +361,7 @@ Work is in progress on `v2-grounded` to eliminate LLM-generated regulatory claim
 
 - **Canonical Ingredient Graph**: one canonical ID per substance, with all aliases (E-numbers, CAS, INCI, synonyms, misspellings, translations) mapped. Schema: [`scripts/d1-regulatory-schema.sql`](scripts/d1-regulatory-schema.sql).
 - **Regulatory facts with mandatory provenance**: every per-jurisdiction claim (FSSAI, FDA CFR, EU, IARC, Codex, etc.) stored as a structured row with a verifiable `source_url`. No row exists without a source.
-- **LLM as renderer, not fact generator**: Gemini receives pre-fetched structured facts and produces layman explanations. It cannot invent a regulation, limit, or citation — those slots do not exist in the prompt.
+- **LLM as renderer, not fact generator**: Gemini receives pre-fetched structured facts and produces layman explanations. It cannot invent a regulation, limit, or citation - those slots do not exist in the prompt.
 - **Deterministic ingestion pipelines**: one ingester per authoritative source (eCFR JSON API, EU CosIng CSV, IARC monographs, FSSAI PDFs via Docling, USDA FDC). Raw documents stored in R2 as evidence; parsed facts stored in D1.
 - **Eval harness**: gold-standard ingredients with expected verdicts + expected citation URLs, run on every change to measure hallucination rate.
 

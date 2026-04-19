@@ -16,12 +16,12 @@ const fraunces = Fraunces({
 })
 
 export const metadata: Metadata = {
-    title: 'Alzhal — What is actually in it?',
-    description: 'Scan a product label. Get a grounded safety read backed by FDA, EU, WHO, FSSAI, and IARC — not AI guesses. Photo, text, or voice.',
+    title: 'Alzhal - What is actually in it?',
+    description: 'Scan a product label. Get a grounded safety read backed by FDA, EU, WHO, FSSAI, and IARC - not AI guesses. Photo, text, or voice.',
     keywords: ['ingredient analysis', 'label scanner', 'food safety', 'cosmetic safety', 'FDA', 'FSSAI', 'IARC', 'product ingredients'],
     authors: [{ name: 'Alzhal' }],
     openGraph: {
-        title: 'Alzhal — What is actually in it?',
+        title: 'Alzhal - What is actually in it?',
         description: 'A grounded ingredient read against real regulators. No wellness guesswork.',
         type: 'website',
     },

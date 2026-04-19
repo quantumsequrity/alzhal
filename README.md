@@ -1,18 +1,18 @@
 # Consumer Truth
 
-AI-powered ingredient safety analyzer. Send a product photo via WhatsApp, Telegram, or the website — get regulation-backed safety analysis grounded in official sources (FDA, FSSAI, EU, IARC, WHO), not AI guesses.
+AI-powered ingredient safety analyzer. Send a product photo via WhatsApp, Telegram, or the website - get regulation-backed safety analysis grounded in official sources (FDA, FSSAI, EU, IARC, WHO), not AI guesses.
 
 **Live:** [sage-insight.cloudsequrity.com](https://sage-insight.cloudsequrity.com)
 
 ## Features
 
-- **Photo Analysis** — Product label image → Gemini Vision OCR → per-ingredient safety breakdown
-- **Text Analysis** — Paste ingredient list, get instant analysis
-- **Voice Analysis** — Voice note in any supported language → transcribe → analyze → audio reply
-- **WhatsApp Bot** — Meta WhatsApp Cloud API. Send photos, voice notes, or text.
-- **Telegram Bot** — Same analysis via Telegram.
-- **Multilingual** — Auto-detects and responds in 20+ languages: Hindi, Tamil, Telugu, Bengali, Marathi, Kannada, Malayalam, Gujarati, Punjabi, Odia, Assamese, Urdu, and more.
-- **Audio Responses** — TTS audio replies on WhatsApp for accessibility.
+- **Photo Analysis** - Product label image → Gemini Vision OCR → per-ingredient safety breakdown
+- **Text Analysis** - Paste ingredient list, get instant analysis
+- **Voice Analysis** - Voice note in any supported language → transcribe → analyze → audio reply
+- **WhatsApp Bot** - Meta WhatsApp Cloud API. Send photos, voice notes, or text.
+- **Telegram Bot** - Same analysis via Telegram.
+- **Multilingual** - Auto-detects and responds in 20+ languages: Hindi, Tamil, Telugu, Bengali, Marathi, Kannada, Malayalam, Gujarati, Punjabi, Odia, Assamese, Urdu, and more.
+- **Audio Responses** - TTS audio replies on WhatsApp for accessibility.
 
 ## Tech Stack
 
@@ -38,11 +38,11 @@ Queried at runtime with circuit breakers (3 consecutive failures → 5-minute co
 
 | Source | Purpose | Endpoint |
 |--------|---------|----------|
-| **CAS Common Chemistry** | Chemical identity — maps names to CAS Registry Numbers | `commonchemistry.cas.org/api/search` |
+| **CAS Common Chemistry** | Chemical identity - maps names to CAS Registry Numbers | `commonchemistry.cas.org/api/search` |
 | **OpenFDA** | Adverse events + food recall enforcement | `api.fda.gov/{food\|drug}/{event\|enforcement}.json` |
 | **PubChem** | Molecular formulas, weights, IUPAC names, CIDs | `pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/...` |
 | **EPA CompTox Dashboard** | Chemical toxicity and safety profiles (link-out) | `comptox.epa.gov/dashboard/chemical/details/{cas}` |
-| **OpenFoodFacts / OpenBeautyFacts** | Global product database — additives (E-numbers), allergens, NOVA processing level | `world.openfoodfacts.org/cgi/search.pl` |
+| **OpenFoodFacts / OpenBeautyFacts** | Global product database - additives (E-numbers), allergens, NOVA processing level | `world.openfoodfacts.org/cgi/search.pl` |
 
 All OpenFoodFacts data is licensed under ODbL; see [`DATA_LICENSE.md`](DATA_LICENSE.md) for attribution terms.
 
@@ -50,14 +50,14 @@ Implementation: [`lib/external-data.ts`](lib/external-data.ts)
 
 ### Layer 2: Regulatory Standards (AI Analysis)
 
-Gemini's analysis prompts are calibrated against these official regulatory databases. No blogs, no influencers — only absolute standards:
+Gemini's analysis prompts are calibrated against these official regulatory databases. No blogs, no influencers - only absolute standards:
 
 | Standard | Authority | Coverage |
 |----------|-----------|----------|
 | **FSSAI** | Food Safety and Standards Authority of India | Food additive limits, permitted ingredients (India) |
 | **BIS IS 4707** | Bureau of Indian Standards | Cosmetic ingredient safety (India) |
 | **FDA CFR Title 21** | U.S. Food and Drug Administration | Food additives, color additives, GRAS, cosmetic regulations |
-| **EU CosIng** | European Commission | Cosmetic ingredient database — banned/restricted (EU) |
+| **EU CosIng** | European Commission | Cosmetic ingredient database - banned/restricted (EU) |
 | **EU Reg. 1333/2008** | European Commission | Food additives Annex II / III |
 | **WHO/IARC** | World Health Organization / IARC | Carcinogenicity classifications (Group 1, 2A, 2B, 3) |
 | **Codex Alimentarius** | WHO/FAO | International food standards (GSFA) |
@@ -124,8 +124,8 @@ Implementation: [`lib/gemini.ts`](lib/gemini.ts)
 ### Prerequisites
 
 - Node.js 18+
-- Google AI Studio API key — [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
-- Meta Business account with WhatsApp app — [developers.facebook.com/apps](https://developers.facebook.com/apps/)
+- Google AI Studio API key - [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+- Meta Business account with WhatsApp app - [developers.facebook.com/apps](https://developers.facebook.com/apps/)
 - (Optional) Telegram Bot token via [@BotFather](https://t.me/BotFather)
 - Cloudflare account (for deployment)
 
@@ -214,10 +214,10 @@ Meta's free tier includes 1,000 business-initiated conversations/month; user-ini
 
 Work in progress to eliminate any remaining LLM-generated regulatory claims:
 
-- **Canonical Ingredient Graph** — one canonical ID per substance + full alias graph ([`scripts/d1-regulatory-schema.sql`](scripts/d1-regulatory-schema.sql))
-- **Regulatory facts with mandatory provenance** — FSSAI, FDA CFR, EU CosIng, IARC, Codex ingested as structured rows, each with a verifiable `source_url`
-- **Gemini as renderer only** — it receives structured facts, produces layman text; cannot invent a regulation or limit
-- **Eval harness** — gold-standard ingredients measure hallucination rate before/after each change
+- **Canonical Ingredient Graph** - one canonical ID per substance + full alias graph ([`scripts/d1-regulatory-schema.sql`](scripts/d1-regulatory-schema.sql))
+- **Regulatory facts with mandatory provenance** - FSSAI, FDA CFR, EU CosIng, IARC, Codex ingested as structured rows, each with a verifiable `source_url`
+- **Gemini as renderer only** - it receives structured facts, produces layman text; cannot invent a regulation or limit
+- **Eval harness** - gold-standard ingredients measure hallucination rate before/after each change
 
 Details in [`Architecture.md`](Architecture.md).
 
@@ -225,6 +225,6 @@ Details in [`Architecture.md`](Architecture.md).
 
 **Proprietary. All rights reserved.**
 
-The code in this repository is not licensed for redistribution, modification, or derivative use. The regulatory data assembled in D1 (where sourced from openly licensed providers like Open Food Facts under ODbL) carries its own license — see [`DATA_LICENSE.md`](DATA_LICENSE.md) for attribution terms on those components.
+The code in this repository is not licensed for redistribution, modification, or derivative use. The regulatory data assembled in D1 (where sourced from openly licensed providers like Open Food Facts under ODbL) carries its own license - see [`DATA_LICENSE.md`](DATA_LICENSE.md) for attribution terms on those components.
 
 The product itself is **free to use**. The codebase is not open source.

@@ -25,7 +25,7 @@ export type GroundedIngredientCardProps = {
  *   - simple_name / how_its_made / safety_summary: LLM-rendered, but the
  *     prompt is structurally unable to invent regulatory claims
  *
- * The presence of this card in the UI signals "grounded path" — distinct
+ * The presence of this card in the UI signals "grounded path" - distinct
  * from the legacy heuristic-based cards.
  */
 export function GroundedIngredientCard(props: GroundedIngredientCardProps) {

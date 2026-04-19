@@ -46,7 +46,7 @@ interface Ingredient {
         }
         sources_cited?: string[]
         epa_link?: string
-        // v2-grounded fields — present when the grounded pipeline served this ingredient
+        // v2-grounded fields - present when the grounded pipeline served this ingredient
         _grounded?: boolean
         _per_jurisdiction?: Array<{
             jurisdiction: string
@@ -349,7 +349,7 @@ function NutritionCard({ nutrition, isHindi }: { nutrition: any; isHindi: boolea
                 {novaGroup && novaLabels[novaGroup] && (
                     <p className="text-[10px] text-gray-600 mt-3">
                         NOVA {novaGroup}: {novaLabels[novaGroup]}
-                        {novaGroup === '4' && (isHindi ? ' — इसमें कई संसाधित सामग्री हो सकती हैं' : ' — may contain many processed additives')}
+                        {novaGroup === '4' && (isHindi ? ' - इसमें कई संसाधित सामग्री हो सकती हैं' : ' - may contain many processed additives')}
                     </p>
                 )}
             </div>
@@ -967,7 +967,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                     </button>
                 </div>
 
-                {/* Search input — only show when 10+ ingredients */}
+                {/* Search input - only show when 10+ ingredients */}
                 {totalCount >= 10 && (
                     <div className="relative">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
@@ -1397,7 +1397,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                             </p>
                             <p className="text-xs text-gray-400 leading-relaxed">
                                 {isHindi
-                                    ? 'इस रिपोर्ट में AI द्वारा अनुमानित सामग्री है। पैक के पीछे की सामग्री सूची की तस्वीर भेजें — सटीक परिणाम पाएं।'
+                                    ? 'इस रिपोर्ट में AI द्वारा अनुमानित सामग्री है। पैक के पीछे की सामग्री सूची की तस्वीर भेजें - सटीक परिणाम पाएं।'
                                     : 'This report is based on AI-estimated ingredients. For exact results, send a photo of the ingredients list on the back of the pack.'}
                             </p>
                         </div>

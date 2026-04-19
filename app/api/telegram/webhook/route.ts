@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
             const waitMsg = waitMessages[language.toLowerCase()] || 'Analyzing your product photo... please wait 10-15 seconds.'
             await sendTelegramMessage(chatId, waitMsg)
 
-            // Process image in background — return HTTP response to Telegram immediately
+            // Process image in background - return HTTP response to Telegram immediately
             const backgroundWork = (async () => {
                 try {
                     const media = await downloadTelegramFile(fileId)

@@ -11,15 +11,15 @@ export type PerJurisdictionRow = {
 }
 
 const JURISDICTION_LABELS: Record<string, string> = {
-  US_FDA:       'United States — FDA',
+  US_FDA:       'United States - FDA',
   EU:           'European Union',
   EFSA:         'EFSA (EU)',
-  IN_FSSAI:     'India — FSSAI',
-  IN_BIS:       'India — BIS',
-  UK_FSA:       'United Kingdom — FSA',
-  AU_NZ_FSANZ:  'Australia / New Zealand — FSANZ',
-  CA_HC:        'Canada — Health Canada',
-  JP_MHLW:      'Japan — MHLW',
+  IN_FSSAI:     'India - FSSAI',
+  IN_BIS:       'India - BIS',
+  UK_FSA:       'United Kingdom - FSA',
+  AU_NZ_FSANZ:  'Australia / New Zealand - FSANZ',
+  CA_HC:        'Canada - Health Canada',
+  JP_MHLW:      'Japan - MHLW',
   WHO_IARC:     'WHO / IARC',
   CODEX:        'Codex Alimentarius',
   NORDIC:       'Nordic Food Authorities',
@@ -62,7 +62,7 @@ export function PerJurisdictionTable({
                 </td>
                 <td className="px-4 py-3 text-slate-700">{r.status}</td>
                 <td className="px-4 py-3 text-slate-500 font-mono text-xs">
-                  {r.regulation_ref ?? '—'}
+                  {r.regulation_ref ?? '-'}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <a
@@ -84,7 +84,7 @@ export function PerJurisdictionTable({
         <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2.5 text-xs text-slate-500">
           <span className="font-medium">Checked but not recorded:</span>{' '}
           {missingJurisdictions.map(label).join(', ')}
-          <span className="ml-1 italic">— no claim made.</span>
+          <span className="ml-1 italic">- no claim made.</span>
         </div>
       )}
     </div>

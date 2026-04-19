@@ -198,7 +198,7 @@ function TutorialModal({ language, onClose }: { language: string; onClose: () =>
             title: isHindi ? 'नमस्ते!' : 'Welcome!',
             description: isHindi
                 ? 'यह ऐप आपको बताता है कि आपके खाने-पीने की चीज़ों में क्या है - सुरक्षित है या नहीं।'
-                : 'Alzhal tells you exactly what is in your food, cosmetics, and household products — and whether it is safe, grounded in real regulators (FDA, EU, WHO, FSSAI, IARC).',
+                : 'Alzhal tells you exactly what is in your food, cosmetics, and household products - and whether it is safe, grounded in real regulators (FDA, EU, WHO, FSSAI, IARC).',
             icon: Shield,
         },
         {
@@ -399,7 +399,7 @@ export default function Home() {
                 throw new Error(data.error || 'Voice analysis failed')
             }
 
-            // Voice API returns { transcription, language, intent, response } — not ingredients
+            // Voice API returns { transcription, language, intent, response } - not ingredients
             setVoiceResponse(data)
         } catch (err: any) {
             console.error(err)

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'method must be "whatsapp" or "copy"' }, { status: 400, headers: getSecurityHeaders() })
     }
 
-    // Atomic increment — single SQL statement, no RPC needed
+    // Atomic increment - single SQL statement, no RPC needed
     await execute('UPDATE scans SET share_count = share_count + 1 WHERE id = ?', [scan_id])
 
     return NextResponse.json({ success: true }, { headers: getSecurityHeaders() })
