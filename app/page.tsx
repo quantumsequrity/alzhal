@@ -16,29 +16,18 @@ import {
    Processing State Component
    ======================================== */
 
-function ProcessingState({ language }: { language: string }) {
-    const isHindi = language === 'Hindi'
+function ProcessingState({ language: _language }: { language: string }) {
     const [step, setStep] = useState(0)
 
-    const steps = isHindi
-        ? [
-            'तस्वीर पढ़ रहे हैं...',
-            'सामग्री पहचान रहे हैं...',
-            'FDA डेटाबेस जाँच रहे हैं...',
-            'EU CosIng जाँच रहे हैं...',
-            'WHO/IARC जाँच रहे हैं...',
-            'BIS/FSSAI जाँच रहे हैं...',
-            'रिपोर्ट बना रहे हैं...',
-        ]
-        : [
-            'Reading product label...',
-            'Identifying ingredients...',
-            'Checking FDA database...',
-            'Checking EU CosIng...',
-            'Checking WHO/IARC...',
-            'Checking BIS/FSSAI...',
-            'Generating safety report...',
-        ]
+    const steps = [
+        'Reading product label...',
+        'Identifying ingredients...',
+        'Checking FDA database...',
+        'Checking EU CosIng...',
+        'Checking WHO/IARC...',
+        'Checking FSSAI / BIS...',
+        'Generating safety report...',
+    ]
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -65,7 +54,7 @@ function ProcessingState({ language }: { language: string }) {
                     ))}
                 </div>
                 <p className="text-xs text-zinc-600">
-                    {isHindi ? '6 आधिकारिक स्रोतों से जाँच हो रही है' : 'Cross-referencing 6 official databases'}
+                    {'Cross-referencing 6 official databases'}
                 </p>
             </div>
         </div>
@@ -76,7 +65,7 @@ function ProcessingState({ language }: { language: string }) {
    Voice Recorder Component
    ======================================== */
 
-function VoiceRecorder({ onRecordComplete, isAnalyzing, language }: {
+function VoiceRecorder({ onRecordComplete, isAnalyzing, language: _language }: {
     onRecordComplete: (audioBlob: Blob) => void
     isAnalyzing: boolean
     language: string
@@ -86,7 +75,6 @@ function VoiceRecorder({ onRecordComplete, isAnalyzing, language }: {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const chunksRef = useRef<Blob[]>([])
     const timerRef = useRef<NodeJS.Timeout | null>(null)
-    const isHindi = language === 'Hindi'
 
     const startRecording = useCallback(async () => {
         try {
@@ -122,9 +110,9 @@ function VoiceRecorder({ onRecordComplete, isAnalyzing, language }: {
             }, 1000)
         } catch (err) {
             console.error('Microphone access denied:', err)
-            alert(isHindi ? 'माइक्रोफोन की अनुमति दें' : 'Please allow microphone access')
+            alert('Please allow microphone access')
         }
-    }, [onRecordComplete, isHindi])
+    }, [onRecordComplete])
 
     const stopRecording = useCallback(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -157,17 +145,15 @@ function VoiceRecorder({ onRecordComplete, isAnalyzing, language }: {
             <div className="text-center">
                 <p className="text-sm font-medium text-zinc-200">
                     {isRecording
-                        ? (isHindi ? 'रिकॉर्ड हो रहा है...' : 'Recording...')
-                        : (isHindi ? 'आवाज़ से पूछें' : 'Ask by Voice')
+                        ? ('Recording...')
+                        : ('Ask by Voice')
                     }
                 </p>
                 {isRecording ? (
                     <p className="text-red-400 font-mono text-sm mt-1">{formatTime(recordingTime)}</p>
                 ) : (
                     <p className="text-xs text-zinc-500 mt-1 max-w-xs">
-                        {isHindi
-                            ? 'माइक बटन दबाएं और सामग्री बोलें या सवाल पूछें'
-                            : 'Tap the mic and speak the ingredients or ask about a product'
+                        {'Tap the mic and speak the ingredients or ask about a product'
                         }
                     </p>
                 )}
@@ -178,7 +164,7 @@ function VoiceRecorder({ onRecordComplete, isAnalyzing, language }: {
                     onClick={stopRecording}
                     className="px-5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/20 transition active:scale-95"
                 >
-                    {isHindi ? 'रोकें और भेजें' : 'Stop & Analyze'}
+                    {'Stop & Analyze'}
                 </button>
             )}
         </div>
@@ -189,30 +175,23 @@ function VoiceRecorder({ onRecordComplete, isAnalyzing, language }: {
    Tutorial Modal
    ======================================== */
 
-function TutorialModal({ language, onClose }: { language: string; onClose: () => void }) {
+function TutorialModal({ language: _language, onClose }: { language: string; onClose: () => void }) {
     const [step, setStep] = useState(0)
-    const isHindi = language === 'Hindi'
 
     const steps = [
         {
-            title: isHindi ? 'नमस्ते!' : 'Welcome!',
-            description: isHindi
-                ? 'यह ऐप आपको बताता है कि आपके खाने-पीने की चीज़ों में क्या है - सुरक्षित है या नहीं।'
-                : 'Alzhal tells you exactly what is in your food, cosmetics, and household products - and whether it is safe, grounded in real regulators (FDA, EU, WHO, FSSAI, IARC).',
+            title: 'Welcome!',
+            description: 'Alzhal tells you exactly what is in your food, cosmetics, and household products - and whether it is safe, grounded in real regulators (FDA, EU, WHO, FSSAI, IARC).',
             icon: Shield,
         },
         {
-            title: isHindi ? 'कैसे इस्तेमाल करें' : 'Three Ways to Check',
-            description: isHindi
-                ? 'फोटो लें, सामग्री लिखें, या आवाज़ में बताएं - तीनों तरीके काम करते हैं।'
-                : 'Upload a photo of the label, paste ingredient text, or use voice input. All three methods work instantly.',
+            title: 'Three Ways to Check',
+            description: 'Upload a photo of the label, paste ingredient text, or use voice input. All three methods work instantly.',
             icon: Camera,
         },
         {
-            title: isHindi ? 'रिपोर्ट समझें' : 'Understand Your Report',
-            description: isHindi
-                ? 'हरा = सुरक्षित, पीला = सावधानी, लाल = खतरनाक। हर सामग्री की पूरी जानकारी मिलेगी।'
-                : 'Green means safe, yellow means caution, red means avoid. Every ingredient gets a detailed breakdown with official sources.',
+            title: 'Understand Your Report',
+            description: 'Green means safe, yellow means caution, red means avoid. Every ingredient gets a detailed breakdown with official sources.',
             icon: Heart,
         }
     ]
@@ -257,13 +236,13 @@ function TutorialModal({ language, onClose }: { language: string; onClose: () =>
                                     onClick={onClose}
                                     className="flex-1 px-4 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition text-sm text-zinc-400 hover:text-zinc-200"
                                 >
-                                    {isHindi ? 'छोड़ें' : 'Skip'}
+                                    {'Skip'}
                                 </button>
                                 <button
                                     onClick={() => setStep(step + 1)}
                                     className="flex-1 px-4 py-2.5 rounded-lg bg-white text-zinc-900 font-medium text-sm hover:bg-zinc-100 transition flex items-center justify-center gap-1 active:scale-[0.98]"
                                 >
-                                    {isHindi ? 'आगे' : 'Next'}
+                                    {'Next'}
                                     <ChevronRight size={14} />
                                 </button>
                             </>
@@ -272,7 +251,7 @@ function TutorialModal({ language, onClose }: { language: string; onClose: () =>
                                 onClick={onClose}
                                 className="w-full px-4 py-2.5 rounded-lg bg-white text-zinc-900 font-medium text-sm hover:bg-zinc-100 transition active:scale-[0.98]"
                             >
-                                {isHindi ? 'शुरू करें' : 'Get Started'}
+                                {'Get Started'}
                             </button>
                         )}
                     </div>
@@ -299,7 +278,6 @@ export default function Home() {
     const [compareB, setCompareB] = useState('')
     const [comparisonData, setComparisonData] = useState<any>(null)
 
-    const isHindi = language === 'Hindi'
 
     useEffect(() => {
         const hasVisited = localStorage.getItem('ct_visited')
@@ -344,7 +322,7 @@ export default function Home() {
 
     const handleTextAnalysis = async () => {
         if (!textInput.trim() || textInput.trim().length < 3) {
-            setError(isHindi ? 'कम से कम एक सामग्री का नाम लिखें।' : 'Please enter at least one ingredient name.')
+            setError('Please enter at least one ingredient name.')
             return
         }
 
@@ -411,7 +389,7 @@ export default function Home() {
 
     const handleComparison = async () => {
         if (!compareA.trim() || !compareB.trim()) {
-            setError(isHindi ? 'दोनों प्रोडक्ट का नाम लिखें।' : 'Please enter both product names.')
+            setError('Please enter both product names.')
             return
         }
 
@@ -456,23 +434,17 @@ export default function Home() {
     }
 
     const labels = {
-        heroTitle: isHindi ? 'जानिए आप क्या' : 'Know What You',
-        heroHighlight: isHindi ? 'खा रहे हैं।' : 'Consume.',
-        heroSubtitle: isHindi
-            ? 'FDA, EU, WHO और BIS/FSSAI मानकों के आधार पर तुरंत AI विश्लेषण।'
-            : 'Instant AI safety analysis against FDA, EU, WHO & BIS/FSSAI standards.',
-        uploadTab: isHindi ? 'तस्वीर' : 'Photo',
-        textTab: isHindi ? 'टेक्स्ट' : 'Text',
-        voiceTab: isHindi ? 'आवाज़' : 'Voice',
-        compareTab: isHindi ? 'तुलना' : 'Compare',
-        textPlaceholder: isHindi
-            ? 'प्रोडक्ट या सामग्री लिखें...\nउदाहरण: Maaza, Coca-Cola, या Sodium Laureth Sulfate, Parabens'
-            : 'Type a product name or paste ingredients...\nExample: Maaza, Coca-Cola, or Sodium Laureth Sulfate, Parabens',
-        analyzeBtn: isHindi ? 'विश्लेषण करें' : 'Analyze',
-        scanAnother: isHindi ? 'दूसरा प्रोडक्ट जाँचें' : 'Scan Another Product',
-        disclaimer: isHindi
-            ? 'यह केवल शैक्षिक जानकारी है, चिकित्सा सलाह नहीं। स्वास्थ्य संबंधी चिंताओं के लिए पेशेवर से सलाह लें।'
-            : 'Educational information only, not medical advice. Consult professionals for health concerns.',
+        heroTitle: 'Know What You',
+        heroHighlight: 'Consume.',
+        heroSubtitle: 'Instant AI safety analysis against FDA, EU, WHO & BIS/FSSAI standards.',
+        uploadTab: 'Photo',
+        textTab: 'Text',
+        voiceTab: 'Voice',
+        compareTab: 'Compare',
+        textPlaceholder: 'Type a product name or paste ingredients...\nExample: Maaza, Coca-Cola, or Sodium Laureth Sulfate, Parabens',
+        analyzeBtn: 'Analyze',
+        scanAnother: 'Scan Another Product',
+        disclaimer: 'Educational information only, not medical advice. Consult professionals for health concerns.',
     }
 
     return (
@@ -498,16 +470,16 @@ export default function Home() {
                                 onChange={(e) => setLanguage(e.target.value)}
                                 className="bg-transparent outline-none text-zinc-300 text-xs cursor-pointer"
                             >
-                                <option value="English">English</option>
-                                <option value="Hindi">हिंदी</option>
                                 <option value="Tamil">தமிழ்</option>
+                                <option value="English">English</option>
                                 <option value="Telugu">తెలుగు</option>
                                 <option value="Kannada">ಕನ್ನಡ</option>
+                                <option value="Malayalam">മലയാളം</option>
+                                <option value="Hindi">हिंदी</option>
                                 <option value="Bengali">বাংলা</option>
                                 <option value="Marathi">मराठी</option>
                                 <option value="Gujarati">ગુજરાતી</option>
                                 <option value="Punjabi">ਪੰਜਾਬੀ</option>
-                                <option value="Malayalam">മലയാളം</option>
                                 <option value="Odia">ଓଡ଼ିଆ</option>
                                 <option value="Assamese">অসমীয়া</option>
                                 <option value="Urdu">اردو</option>
@@ -517,7 +489,7 @@ export default function Home() {
                         <button
                             onClick={() => { setShowTutorial(true) }}
                             className="p-1.5 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition"
-                            title={isHindi ? 'मदद' : 'Help'}
+                            title={'Help'}
                         >
                             <HelpCircle size={15} />
                         </button>
@@ -584,7 +556,7 @@ export default function Home() {
                                     />
                                     <div className="flex items-center justify-between text-xs text-zinc-600 px-0.5">
                                         <span>{textInput.length}/5000</span>
-                                        <span>{isHindi ? 'कॉमा से अलग करें' : 'Separate with commas'}</span>
+                                        <span>{'Separate with commas'}</span>
                                     </div>
                                     <button
                                         onClick={handleTextAnalysis}
@@ -610,19 +582,19 @@ export default function Home() {
                                         type="text"
                                         value={compareA}
                                         onChange={(e) => setCompareA(e.target.value)}
-                                        placeholder={isHindi ? 'पहला प्रोडक्ट (जैसे: Maggi Noodles)' : 'First product (e.g., Maggi Noodles)'}
+                                        placeholder={'First product (e.g., Maggi Noodles)'}
                                         className="w-full p-3 rounded-md bg-zinc-950 border border-zinc-800 focus:border-zinc-600 focus:outline-none text-sm text-white placeholder-zinc-600 transition"
                                         disabled={isAnalyzing}
                                         maxLength={200}
                                     />
                                     <div className="text-center text-xs text-zinc-600 font-medium">
-                                        {isHindi ? 'बनाम' : 'VS'}
+                                        {'VS'}
                                     </div>
                                     <input
                                         type="text"
                                         value={compareB}
                                         onChange={(e) => setCompareB(e.target.value)}
-                                        placeholder={isHindi ? 'दूसरा प्रोडक्ट (जैसे: Yippee Noodles)' : 'Second product (e.g., Yippee Noodles)'}
+                                        placeholder={'Second product (e.g., Yippee Noodles)'}
                                         className="w-full p-3 rounded-md bg-zinc-950 border border-zinc-800 focus:border-zinc-600 focus:outline-none text-sm text-white placeholder-zinc-600 transition"
                                         disabled={isAnalyzing}
                                         maxLength={200}
@@ -632,7 +604,7 @@ export default function Home() {
                                         disabled={isAnalyzing || !compareA.trim() || !compareB.trim()}
                                         className="w-full py-2.5 rounded-md bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition active:scale-[0.98]"
                                     >
-                                        {isHindi ? 'तुलना करें' : 'Compare Products'}
+                                        {'Compare Products'}
                                     </button>
                                 </div>
                             )}
@@ -677,16 +649,16 @@ export default function Home() {
                         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 space-y-4">
                             {voiceResponse.transcription && (
                                 <div>
-                                    <p className="text-xs text-zinc-500 mb-1">{isHindi ? 'आपने कहा' : 'You said'}</p>
+                                    <p className="text-xs text-zinc-500 mb-1">{'You said'}</p>
                                     <p className="text-sm text-zinc-300 italic">&ldquo;{voiceResponse.transcription}&rdquo;</p>
                                 </div>
                             )}
                             <div>
-                                <p className="text-xs text-zinc-500 mb-1">{isHindi ? 'जवाब' : 'Response'}</p>
+                                <p className="text-xs text-zinc-500 mb-1">{'Response'}</p>
                                 <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{voiceResponse.response}</p>
                             </div>
                             {voiceResponse.language && voiceResponse.language !== 'English' && (
-                                <p className="text-xs text-zinc-600">{isHindi ? 'भाषा' : 'Language'}: {voiceResponse.language}</p>
+                                <p className="text-xs text-zinc-600">{'Language'}: {voiceResponse.language}</p>
                             )}
                         </div>
                     </div>

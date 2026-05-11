@@ -15,7 +15,7 @@ Usage:
     python3 scripts/build-reference-db.py
 
 Then import:
-    npx wrangler d1 execute consumer-truth-ingredients-ref --remote --file=scripts/d1-ingredients-ref-unified.sql
+    npx wrangler d1 execute alzhal-ingredients-ref --remote --file=scripts/d1-ingredients-ref-unified.sql
 """
 
 import json
@@ -562,10 +562,10 @@ def main():
 
     print("\n" + "=" * 60)
     print("Done! Next steps:")
-    print("  1. npx wrangler d1 execute consumer-truth-ingredients-ref --remote --file=scripts/d1-ingredients-ref-schema.sql")
-    print("  2. npx wrangler d1 execute consumer-truth-ingredients-ref --remote --file=scripts/d1-ingredients-ref-unified.sql")
+    print("  1. npx wrangler d1 execute alzhal-ingredients-ref --remote --file=scripts/d1-ingredients-ref-schema.sql")
+    print("  2. npx wrangler d1 execute alzhal-ingredients-ref --remote --file=scripts/d1-ingredients-ref-unified.sql")
     print("  3. npx tsx scripts/import-pubchem.ts  (for PubChem CID/formula/weight/IUPAC)")
-    print("  4. npx wrangler d1 execute consumer-truth-ingredients-ref --remote --file=scripts/d1-ingredients-ref-pubchem.sql")
+    print("  4. npx wrangler d1 execute alzhal-ingredients-ref --remote --file=scripts/d1-ingredients-ref-pubchem.sql")
     print("=" * 60)
 
 

@@ -1,6 +1,6 @@
 -- ============================================================
 -- Migrate IARC facts from ingredient_reference (legacy) to the CIG schema.
--- Both tables live in consumer-truth-ingredients-ref, so this is a single
+-- Both tables live in alzhal-ingredients-ref, so this is a single
 -- in-DB operation (no JSON export/import round-trip).
 -- ============================================================
 

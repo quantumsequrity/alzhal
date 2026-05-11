@@ -296,7 +296,7 @@ def main():
     print(f'  skipped (country filter):   {skipped_filtered_country:,}')
     print('')
     print('Apply to D1:')
-    print(f'  npx wrangler d1 execute consumer-truth-ingredients-ref --remote --file={OUTPUT.relative_to(Path.cwd())}')
+    print(f'  npx wrangler d1 execute alzhal-ingredients-ref --remote --file={OUTPUT.relative_to(Path.cwd())}')
 
 
 if __name__ == '__main__':

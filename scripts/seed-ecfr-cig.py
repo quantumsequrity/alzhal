@@ -32,7 +32,7 @@ Output:
     scripts/d1-regulatory-ecfr-21.sql
 
 Then import:
-    npx wrangler d1 execute consumer-truth-regulatory --remote \
+    npx wrangler d1 execute alzhal-regulatory --remote \
         --file=scripts/d1-regulatory-ecfr-21.sql
 
 Source:
@@ -339,7 +339,7 @@ def main():
     print(f'  facts:       {fact_count}')
     print('')
     print('Apply to regulatory D1:')
-    print(f'  npx wrangler d1 execute consumer-truth-regulatory --remote --file={OUTPUT.relative_to(Path.cwd())}')
+    print(f'  npx wrangler d1 execute alzhal-regulatory --remote --file={OUTPUT.relative_to(Path.cwd())}')
 
 
 if __name__ == '__main__':

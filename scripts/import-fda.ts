@@ -13,7 +13,7 @@
  * Output: scripts/d1-ingredients-ref-fda.sql
  *
  * Then import:
- *   npx wrangler d1 execute consumer-truth-ingredients-ref --remote --file=scripts/d1-ingredients-ref-fda.sql
+ *   npx wrangler d1 execute alzhal-ingredients-ref --remote --file=scripts/d1-ingredients-ref-fda.sql
  */
 
 import { readFileSync, createWriteStream } from 'fs'
@@ -22,7 +22,7 @@ import path from 'path'
 
 const OUTPUT_FILE = path.join(process.cwd(), 'scripts', 'd1-ingredients-ref-fda.sql')
 const INPUT_FILE = path.join(process.cwd(), 'scripts', 'ingredient-seed-list.json')
-const DB_NAME = 'consumer-truth-ingredients-ref'
+const DB_NAME = 'alzhal-ingredients-ref'
 
 const CONCURRENCY = 4 // 4 concurrent (each makes 2 FDA calls = 8 total, within 240/min limit)
 const BATCH_DELAY_MS = 2200 // delay between batches (4 ingredients x 2 calls = 8, needs 2+ sec)
@@ -45,7 +45,7 @@ async function fetchFDAEvents(name: string): Promise<number> {
     const url = `https://api.fda.gov/food/event.json?search=products.industry_name:${encodedName}+reactions:${encodedName}&limit=1`
 
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'ConsumerTruth-Import/1.0' },
+      headers: { 'User-Agent': 'Alzhal-Import/1.0' },
       signal: controller.signal,
     })
 
@@ -72,7 +72,7 @@ async function fetchFDARecalls(name: string): Promise<{
     const url = `https://api.fda.gov/food/enforcement.json?search=reason_for_recall:${encodedName}&limit=3`
 
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'ConsumerTruth-Import/1.0' },
+      headers: { 'User-Agent': 'Alzhal-Import/1.0' },
       signal: controller.signal,
     })
 

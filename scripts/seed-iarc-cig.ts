@@ -21,7 +21,7 @@
  * Output: scripts/d1-regulatory-iarc.sql
  *
  * Then import:
- *   npx wrangler d1 execute consumer-truth-regulatory --remote --file=scripts/d1-regulatory-iarc.sql
+ *   npx wrangler d1 execute alzhal-regulatory --remote --file=scripts/d1-regulatory-iarc.sql
  *
  * Source:
  *   IARC Monographs on the Identification of Carcinogenic Hazards to Humans
@@ -209,10 +209,10 @@ function main() {
   console.log(`  Facts:       ${factCount}`)
   console.log('')
   console.log('Next step — apply to your regulatory D1 database:')
-  console.log('  npx wrangler d1 create consumer-truth-regulatory   # one-time')
+  console.log('  npx wrangler d1 create alzhal-regulatory   # one-time')
   console.log('  # Add the binding to wrangler.toml, then:')
-  console.log('  npx wrangler d1 execute consumer-truth-regulatory --remote --file=scripts/d1-regulatory-schema.sql')
-  console.log(`  npx wrangler d1 execute consumer-truth-regulatory --remote --file=${path.relative(process.cwd(), OUTPUT_FILE)}`)
+  console.log('  npx wrangler d1 execute alzhal-regulatory --remote --file=scripts/d1-regulatory-schema.sql')
+  console.log(`  npx wrangler d1 execute alzhal-regulatory --remote --file=${path.relative(process.cwd(), OUTPUT_FILE)}`)
 }
 
 main()

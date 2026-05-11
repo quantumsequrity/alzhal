@@ -1,4 +1,29 @@
-name = "sage-insight"
+# Alzhal - Cloudflare Workers configuration
+#
+# This file is the PUBLIC template. Real production IDs live in
+# wrangler.private.toml (gitignored). To deploy your own instance:
+#
+#   1. Create the D1 databases and R2 bucket in your Cloudflare account:
+#        npx wrangler d1 create alzhal-app
+#        npx wrangler d1 create alzhal-food
+#        npx wrangler d1 create alzhal-nutrition
+#        npx wrangler d1 create alzhal-meta
+#        npx wrangler d1 create alzhal-ingredients-ref
+#        npx wrangler r2 bucket create alzhal-audio
+#
+#   2. Copy the printed database_id values into this file, replacing every
+#      "REPLACE_WITH_YOUR_D1_DATABASE_ID" below.
+#
+#   3. Set your secrets:
+#        npx wrangler secret put GEMINI_API_KEY
+#        npx wrangler secret put WHATSAPP_TOKEN
+#        npx wrangler secret put WHATSAPP_APP_SECRET
+#        npx wrangler secret put TELEGRAM_BOT_TOKEN
+#
+#   4. Deploy:
+#        npm run deploy
+
+name = "alzhal"
 main = ".open-next/worker.js"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -8,33 +33,33 @@ directory = ".open-next/assets"
 binding = "ASSETS"
 
 [[r2_buckets]]
-bucket_name = "consumer-truth-audio"
+bucket_name = "alzhal-audio"
 binding = "AUDIO_BUCKET"
 
 [[d1_databases]]
 binding = "APP_DB"
-database_name = "consumer-truth-app"
-database_id = "d192e561-9414-4d42-b589-165981e22a3c"
+database_name = "alzhal-app"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 
 [[d1_databases]]
 binding = "FOOD_DB"
-database_name = "consumer-truth-food"
-database_id = "55a42a68-a2fd-4653-8d82-f8947a750ebf"
+database_name = "alzhal-food"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 
 [[d1_databases]]
 binding = "FOOD_NUTRITION_DB"
-database_name = "consumer-truth-nutrition"
-database_id = "be4abefd-e638-4d28-bcfb-f42bdf5a139b"
+database_name = "alzhal-nutrition"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 
 [[d1_databases]]
 binding = "FOOD_META_DB"
-database_name = "consumer-truth-meta"
-database_id = "1c449560-9160-4442-bc77-a2b12473f284"
+database_name = "alzhal-meta"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 
 [[d1_databases]]
 binding = "INGREDIENTS_REF_DB"
-database_name = "consumer-truth-ingredients-ref"
-database_id = "a1d6b2d8-9f8a-448b-9fef-8d43b8f63a1f"
+database_name = "alzhal-ingredients-ref"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 
 [ai]
 binding = "AI"
@@ -42,10 +67,11 @@ binding = "AI"
 [vars]
 NODE_ENV = "production"
 WHATSAPP_PHONE_NUMBER_ID = "your_phone_number_id"
-NEXT_PUBLIC_APP_URL = "https://sage-insight.cloudsequrity.com"
+NEXT_PUBLIC_APP_URL = "http://localhost:3000"
 USE_GROUNDED_RENDERER = "true"
 RENDERER_BACKEND = "gemma"
 RENDERER_MODEL = "@cf/google/gemma-4-26b-a4b-it"
 
-[[custom_domains]]
-hostname = "sage-insight.cloudsequrity.com"
+# Add your custom domain (optional):
+# [[custom_domains]]
+# hostname = "your-domain.example.com"

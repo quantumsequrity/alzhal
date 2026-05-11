@@ -12,7 +12,7 @@
  * Output: scripts/d1-ingredients-ref-cas.sql
  *
  * Then import:
- *   npx wrangler d1 execute consumer-truth-ingredients-ref --remote --file=scripts/d1-ingredients-ref-cas.sql
+ *   npx wrangler d1 execute alzhal-ingredients-ref --remote --file=scripts/d1-ingredients-ref-cas.sql
  */
 
 import { readFileSync, createWriteStream } from 'fs'
@@ -21,7 +21,7 @@ import path from 'path'
 
 const INPUT_FILE = path.join(process.cwd(), 'scripts', 'ingredient-seed-list.json')
 const OUTPUT_FILE = path.join(process.cwd(), 'scripts', 'd1-ingredients-ref-cas.sql')
-const DB_NAME = 'consumer-truth-ingredients-ref'
+const DB_NAME = 'alzhal-ingredients-ref'
 
 const CONCURRENCY = 2 // CAS allows ~2 req/sec
 const BATCH_DELAY_MS = 1100 // delay between concurrent batches
@@ -43,7 +43,7 @@ async function fetchCAS(name: string): Promise<string | null> {
     const url = `https://commonchemistry.cas.org/api/search?q=${encodeURIComponent(name)}`
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'ConsumerTruth-Import/1.0',
+        'User-Agent': 'Alzhal-Import/1.0',
         'Accept': 'application/json',
       },
       signal: controller.signal,

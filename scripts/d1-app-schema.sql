@@ -1,5 +1,5 @@
--- Consumer Truth App Database Schema (Cloudflare D1 / SQLite)
--- Replaces Supabase tables with edge-local D1
+-- Alzhal App Database Schema (Cloudflare D1 / SQLite)
+-- The application's primary D1 database (binding: APP_DB).
 
 -- Products table
 CREATE TABLE IF NOT EXISTS products (

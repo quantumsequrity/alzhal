@@ -42,13 +42,12 @@ function ScoreBadge({ score }: { score: string }) {
 }
 
 function ProductCard({ product, isRecommended, language }: { product: ComparisonProduct; isRecommended: boolean; language: string }) {
-    const isHindi = language === 'Hindi'
     return (
         <div className={`flex-1 glass-card rounded-2xl p-5 space-y-4 ${isRecommended ? 'border-green-500/30 ring-1 ring-green-500/20' : ''}`}>
             {isRecommended && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 text-[10px] font-bold uppercase tracking-wider">
                     <ShieldCheck size={10} />
-                    {isHindi ? 'सुझाव' : 'Recommended'}
+                    {'Recommended'}
                 </span>
             )}
             <h3 className="text-lg font-semibold text-white">{product.name}</h3>
@@ -57,7 +56,7 @@ function ProductCard({ product, isRecommended, language }: { product: Comparison
             {product.pros && product.pros.length > 0 && (
                 <div>
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2">
-                        {isHindi ? 'अच्छी बातें' : 'Positives'}
+                        {'Positives'}
                     </p>
                     <ul className="space-y-1.5">
                         {product.pros.map((p, i) => (
@@ -73,7 +72,7 @@ function ProductCard({ product, isRecommended, language }: { product: Comparison
             {product.key_concerns && product.key_concerns.length > 0 && (
                 <div>
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2">
-                        {isHindi ? 'चिंताएं' : 'Concerns'}
+                        {'Concerns'}
                     </p>
                     <ul className="space-y-1.5">
                         {product.key_concerns.map((c, i) => (
@@ -90,7 +89,6 @@ function ProductCard({ product, isRecommended, language }: { product: Comparison
 }
 
 export default function ComparisonView({ data, language = 'English' }: { data: ComparisonData; language?: string }) {
-    const isHindi = language === 'Hindi'
     const recLower = (data.recommendation || '').toLowerCase()
 
     return (
@@ -114,7 +112,7 @@ export default function ComparisonView({ data, language = 'English' }: { data: C
                 <div className="glass-card rounded-2xl p-5 space-y-3">
                     <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                         <ShieldCheck size={14} />
-                        {isHindi ? 'निष्कर्ष' : 'Verdict'}
+                        {'Verdict'}
                     </h4>
                     <p className="text-sm text-gray-300 leading-relaxed">{data.verdict}</p>
                 </div>
@@ -131,9 +129,7 @@ export default function ComparisonView({ data, language = 'English' }: { data: C
                         ))}
                     </div>
                     <p className="text-gray-600 text-[10px] mt-3">
-                        {isHindi
-                            ? 'यह केवल शैक्षिक जानकारी है, चिकित्सा सलाह नहीं।'
-                            : 'Educational information only, not medical advice.'}
+                        {'Educational information only, not medical advice.'}
                     </p>
                 </div>
             )}

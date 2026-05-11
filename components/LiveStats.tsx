@@ -40,7 +40,6 @@ export default function LiveStats({ language = 'English' }: LiveStatsProps) {
         return () => clearInterval(interval)
     }, [])
 
-    const isHindi = language === 'Hindi'
     const allZero =
         stats.productsChecked === 0 &&
         stats.ingredientsAnalyzed === 0 &&
@@ -58,31 +57,29 @@ export default function LiveStats({ language = 'English' }: LiveStatsProps) {
         <div className="w-full border-t border-zinc-800/50 py-4">
             {allZero ? (
                 <p className="text-xs text-zinc-600 text-center">
-                    {isHindi
-                        ? 'आंकड़े देखने के लिए स्कैन शुरू करें'
-                        : 'Start scanning to see stats'}
+                    {'Start scanning to see stats'}
                 </p>
             ) : (
                 <p className="text-xs sm:text-sm text-zinc-500 text-center">
                     <span className="text-zinc-300 font-medium">
                         {stats.productsChecked.toLocaleString()}
                     </span>
-                    {' '}{isHindi ? 'प्रोडक्ट' : 'products'}
+                    {' '}{'products'}
                     <span className="mx-1.5 text-zinc-700">&middot;</span>
                     <span className="text-zinc-300 font-medium">
                         {stats.ingredientsAnalyzed.toLocaleString()}
                     </span>
-                    {' '}{isHindi ? 'सामग्री' : 'ingredients'}
+                    {' '}{'ingredients'}
                     <span className="mx-1.5 text-zinc-700">&middot;</span>
                     <span className="text-zinc-300 font-medium">
                         {stats.toxicFound.toLocaleString()}
                     </span>
-                    {' '}{isHindi ? 'खतरनाक' : 'toxic'}
+                    {' '}{'toxic'}
                     <span className="mx-1.5 text-zinc-700">&middot;</span>
                     <span className="text-zinc-300 font-medium">
                         {stats.sourcesChecked.toLocaleString()}
                     </span>
-                    {' '}{isHindi ? 'स्रोत' : 'sources'}
+                    {' '}{'sources'}
                 </p>
             )}
         </div>

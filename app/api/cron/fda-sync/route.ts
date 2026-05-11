@@ -39,7 +39,7 @@ async function fetchFDAEvents(name: string): Promise<number> {
     const url = `https://api.fda.gov/food/event.json?search=products.industry_name:${encodedName}+reactions:${encodedName}&limit=1`
 
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'ConsumerTruth-CronSync/1.0' },
+      headers: { 'User-Agent': 'Alzhal-CronSync/1.0' },
       signal: controller.signal,
     })
 
@@ -66,7 +66,7 @@ async function fetchFDARecalls(name: string): Promise<{
     const url = `https://api.fda.gov/food/enforcement.json?search=reason_for_recall:${encodedName}&limit=3`
 
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'ConsumerTruth-CronSync/1.0' },
+      headers: { 'User-Agent': 'Alzhal-CronSync/1.0' },
       signal: controller.signal,
     })
 

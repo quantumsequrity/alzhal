@@ -14,7 +14,6 @@ export default function FileUpload({ onFileSelect, isUploading, language = 'Engl
     const [preview, setPreview] = useState<string | null>(null)
     const [fileName, setFileName] = useState<string | null>(null)
     const inputRef = useRef<HTMLInputElement>(null)
-    const isHindi = language === 'Hindi'
 
     const handleDrag = useCallback((e: React.DragEvent) => {
         e.preventDefault()
@@ -152,10 +151,10 @@ export default function FileUpload({ onFileSelect, isUploading, language = 'Engl
 
                     <p className="text-sm text-zinc-400 mb-1">
                         {isUploading
-                            ? (isHindi ? 'AI सामग्री पढ़ रहा है...' : 'Analyzing ingredients...')
+                            ? ('Analyzing ingredients...')
                             : preview
                                 ? fileName
-                                : (isHindi ? 'तस्वीर यहाँ छोड़ें या अपलोड करें' : 'Drop image here or click to upload')
+                                : ('Drop image here or click to upload')
                         }
                     </p>
 
@@ -165,8 +164,8 @@ export default function FileUpload({ onFileSelect, isUploading, language = 'Engl
                             className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-150 min-h-[44px]"
                         >
                             {preview
-                                ? (isHindi ? 'दूसरी तस्वीर' : 'Change Photo')
-                                : (isHindi ? 'फोटो चुनें' : 'Select Photo')
+                                ? ('Change Photo')
+                                : ('Select Photo')
                             }
                         </button>
                     )}

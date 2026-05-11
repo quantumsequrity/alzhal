@@ -15,7 +15,7 @@
  * Usage:
  *
  *   # 1. Export the legacy IARC rows:
- *   npx wrangler d1 execute consumer-truth-ingredients-ref --remote --json \
+ *   npx wrangler d1 execute alzhal-ingredients-ref --remote --json \
  *     --command "SELECT name, name_original, cas_number, pubchem_cid, molecular_formula, molecular_weight, iupac_name, iarc_group, iarc_description, iarc_agent_name FROM ingredient_reference WHERE iarc_group IS NOT NULL" \
  *     > scripts/bulk-data/iarc-legacy-export.json
  *
@@ -23,7 +23,7 @@
  *   npx tsx scripts/seed-iarc-from-legacy.ts
  *
  *   # 3. Apply to the new regulatory D1:
- *   npx wrangler d1 execute consumer-truth-regulatory --remote \
+ *   npx wrangler d1 execute alzhal-regulatory --remote \
  *     --file=scripts/d1-regulatory-iarc.sql
  */
 
@@ -96,7 +96,7 @@ function loadLegacyExport(): LegacyRow[] {
     console.error(`No legacy export file at ${INPUT}`)
     console.error('')
     console.error('Generate it first with:')
-    console.error('  npx wrangler d1 execute consumer-truth-ingredients-ref --remote --json \\')
+    console.error('  npx wrangler d1 execute alzhal-ingredients-ref --remote --json \\')
     console.error('    --command "SELECT name, name_original, cas_number, pubchem_cid, molecular_formula, molecular_weight, iupac_name, iarc_group, iarc_description, iarc_agent_name FROM ingredient_reference WHERE iarc_group IS NOT NULL" \\')
     console.error(`    > ${INPUT.replace(process.cwd() + '/', '')}`)
     process.exit(2)
@@ -248,7 +248,7 @@ function main() {
   console.log(`  facts:       ${factCount}`)
   console.log('')
   console.log('Apply:')
-  console.log(`  npx wrangler d1 execute consumer-truth-regulatory --remote --file=${path.relative(process.cwd(), OUTPUT)}`)
+  console.log(`  npx wrangler d1 execute alzhal-regulatory --remote --file=${path.relative(process.cwd(), OUTPUT)}`)
 }
 
 main()

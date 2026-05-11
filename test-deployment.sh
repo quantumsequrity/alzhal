@@ -1,9 +1,18 @@
 #!/bin/bash
+#
+# Smoke tests for a deployed Alzhal instance.
+# Set BASE_URL to your deployed worker URL before running.
 
-BASE_URL="https://your-worker.workers.dev"
+BASE_URL="${BASE_URL:-https://your-worker.workers.dev}"
+
+if [[ "$BASE_URL" == *"your-worker.workers.dev"* ]]; then
+  echo "Set BASE_URL=https://your-deployed-worker.workers.dev before running."
+  exit 1
+fi
 
 echo "========================================="
-echo "COMPREHENSIVE DEPLOYMENT TEST"
+echo "ALZHAL DEPLOYMENT SMOKE TEST"
+echo "Target: $BASE_URL"
 echo "========================================="
 
 # Test 1: Home Page
@@ -13,9 +22,9 @@ echo "-----------------"
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL")
 echo "Status Code: $STATUS"
 if [ "$STATUS" == "200" ]; then
-  echo "✓ PASS"
+  echo "PASS"
 else
-  echo "✗ FAIL"
+  echo "FAIL"
 fi
 
 # Test 2: Stats API
@@ -25,9 +34,9 @@ echo "-----------------"
 STATS=$(curl -s "$BASE_URL/api/stats")
 echo "$STATS" | python3 -m json.tool | head -10
 if echo "$STATS" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if 'productsChecked' in d else 1)"; then
-  echo "✓ PASS"
+  echo "PASS"
 else
-  echo "✗ FAIL"
+  echo "FAIL"
 fi
 
 # Test 3: Text Analysis API
@@ -39,9 +48,9 @@ ANALYSIS=$(curl -s -X POST "$BASE_URL/api/analyze/text" \
   -d '{"ingredients":["water","sugar","salt"]}')
 echo "$ANALYSIS" | python3 -m json.tool | head -20
 if echo "$ANALYSIS" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('success') else 1)" 2>/dev/null; then
-  echo "✓ PASS"
+  echo "PASS"
 else
-  echo "✗ FAIL"
+  echo "FAIL"
 fi
 
 # Test 4: Compare API
@@ -53,9 +62,9 @@ COMPARE=$(curl -s -X POST "$BASE_URL/api/compare" \
   -d '{"products":[{"name":"Product A","ingredients":["water","sugar"]},{"name":"Product B","ingredients":["water","aspartame"]}]}')
 echo "$COMPARE" | python3 -m json.tool | head -15
 if echo "$COMPARE" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('success') else 1)" 2>/dev/null; then
-  echo "✓ PASS"
+  echo "PASS"
 else
-  echo "✗ FAIL"
+  echo "FAIL"
 fi
 
 # Test 5: Feedback API
@@ -67,9 +76,9 @@ FEEDBACK=$(curl -s -X POST "$BASE_URL/api/feedback" \
   -d '{"scanId":"test-'$(date +%s)'","rating":5,"comment":"Automated test","type":"general"}')
 echo "$FEEDBACK"
 if echo "$FEEDBACK" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('success') else 1)" 2>/dev/null; then
-  echo "✓ PASS"
+  echo "PASS"
 else
-  echo "✗ FAIL"
+  echo "FAIL"
 fi
 
 echo ""

@@ -4,7 +4,7 @@
  * Links to FOOD_DB via `code` (barcode).
  *
  * Usage:  npx tsx scripts/import-meta.ts
- * Import: npx wrangler d1 execute consumer-truth-meta --remote --file=scripts/d1-meta.sql
+ * Import: npx wrangler d1 execute alzhal-meta --remote --file=scripts/d1-meta.sql
  */
 
 import { createReadStream, createWriteStream, existsSync } from 'fs'
@@ -193,7 +193,7 @@ CREATE INDEX IF NOT EXISTS idx_meta_code ON food_meta(code);
   out.end()
 
   console.log(`\nDone! Wrote ${totalWritten.toLocaleString()} rows. Skipped ${skipped.toLocaleString()}.`)
-  console.log(`  npx wrangler d1 execute consumer-truth-meta --remote --file=scripts/d1-meta.sql`)
+  console.log(`  npx wrangler d1 execute alzhal-meta --remote --file=scripts/d1-meta.sql`)
 }
 
 function writeBatch(out: ReturnType<typeof createWriteStream>, batch: string[][]) {

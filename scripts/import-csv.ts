@@ -12,7 +12,7 @@
  * Output: scripts/d1-import.sql (ready for `wrangler d1 execute`)
  *
  * Then import into D1:
- *   npx wrangler d1 execute consumer-truth-food --remote --file=scripts/d1-import.sql
+ *   npx wrangler d1 execute alzhal-food --remote --file=scripts/d1-import.sql
  */
 
 import { createReadStream, createWriteStream, existsSync } from 'fs'
@@ -258,7 +258,7 @@ CREATE INDEX IF NOT EXISTS idx_food_products_name ON food_products(product_name)
   console.log(`\nDone! Wrote ${totalWritten.toLocaleString()} rows to ${OUTPUT_FILE}`)
   console.log(`Skipped ${skipped.toLocaleString()} empty rows`)
   console.log(`\nNext step:`)
-  console.log(`  npx wrangler d1 execute consumer-truth-food --remote --file=scripts/d1-import.sql`)
+  console.log(`  npx wrangler d1 execute alzhal-food --remote --file=scripts/d1-import.sql`)
 }
 
 function writeBatch(out: ReturnType<typeof createWriteStream>, batch: string[][]) {

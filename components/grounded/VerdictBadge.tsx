@@ -4,12 +4,12 @@ import { CheckCircle2, AlertTriangle, XCircle, HelpCircle, ShieldCheck, Ban } fr
 
 export type Verdict = 'SAFE' | 'CAUTION' | 'AVOID' | 'BANNED' | 'UNKNOWN'
 
-const styles: Record<Verdict, { icon: typeof ShieldCheck; bg: string; text: string; ring: string; label: string }> = {
-  SAFE:    { icon: ShieldCheck,    bg: 'bg-emerald-50',  text: 'text-emerald-700',  ring: 'ring-emerald-200',  label: 'Safe' },
-  CAUTION: { icon: AlertTriangle,  bg: 'bg-amber-50',    text: 'text-amber-700',    ring: 'ring-amber-200',    label: 'Caution' },
-  AVOID:   { icon: XCircle,        bg: 'bg-orange-50',   text: 'text-orange-700',   ring: 'ring-orange-200',   label: 'Avoid' },
-  BANNED:  { icon: Ban,            bg: 'bg-red-50',      text: 'text-red-700',      ring: 'ring-red-200',      label: 'Banned' },
-  UNKNOWN: { icon: HelpCircle,     bg: 'bg-slate-50',    text: 'text-slate-600',    ring: 'ring-slate-200',    label: 'No official record' },
+const styles: Record<Verdict, { icon: typeof ShieldCheck; bg: string; text: string; ring: string; label: string; hint: string }> = {
+  SAFE:    { icon: ShieldCheck,    bg: 'bg-emerald-50',  text: 'text-emerald-700',  ring: 'ring-emerald-200',  label: 'Safe',              hint: 'Permitted everywhere we checked.' },
+  CAUTION: { icon: AlertTriangle,  bg: 'bg-amber-50',    text: 'text-amber-700',    ring: 'ring-amber-200',    label: 'Watch the dose',    hint: 'Allowed, but used within a limit.' },
+  AVOID:   { icon: XCircle,        bg: 'bg-orange-50',   text: 'text-orange-700',   ring: 'ring-orange-200',   label: 'Skip if you can',   hint: 'Flagged as a concern by multiple regulators.' },
+  BANNED:  { icon: Ban,            bg: 'bg-red-50',      text: 'text-red-700',      ring: 'ring-red-200',      label: 'Avoid',             hint: 'Banned in at least one major market.' },
+  UNKNOWN: { icon: HelpCircle,     bg: 'bg-slate-50',    text: 'text-slate-600',    ring: 'ring-slate-200',    label: 'No official record', hint: 'No regulation indexed yet — not a green light.' },
 }
 
 export function VerdictBadge({
@@ -40,9 +40,9 @@ export function VerdictBadge({
       {showGroundedMark && (
         <span
           className="ml-1 text-[10px] font-medium uppercase tracking-wide opacity-70"
-          title="Verdict derived from structured regulatory facts, not from an AI-generated claim."
+          title="This verdict was computed from real regulator data with a clickable source on every line. The AI did not write it."
         >
-          grounded
+          verified
         </span>
       )}
     </span>

@@ -12,7 +12,7 @@
  * Output: scripts/d1-ingredients-ref-pubchem.sql
  *
  * Then import:
- *   npx wrangler d1 execute consumer-truth-ingredients-ref --remote --file=scripts/d1-ingredients-ref-pubchem.sql
+ *   npx wrangler d1 execute alzhal-ingredients-ref --remote --file=scripts/d1-ingredients-ref-pubchem.sql
  */
 
 import { readFileSync, createWriteStream } from 'fs'
@@ -48,7 +48,7 @@ async function fetchPubChem(name: string): Promise<{
     const url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodedName}/property/MolecularFormula,MolecularWeight,IUPACName/JSON`
 
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'ConsumerTruth-Import/1.0' },
+      headers: { 'User-Agent': 'Alzhal-Import/1.0' },
       signal: controller.signal,
     })
 

@@ -27,6 +27,9 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Private Cloudflare config (real D1 IDs, custom domains)
+wrangler.private.toml
+
 # Vercel
 .vercel
 

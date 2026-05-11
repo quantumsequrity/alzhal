@@ -10,7 +10,6 @@ interface TrendingData {
 
 export default function TrendingWidget({ language = 'English' }: { language?: string }) {
     const [data, setData] = useState<TrendingData | null>(null)
-    const isHindi = language === 'Hindi'
 
     useEffect(() => {
         fetch('/api/stats')
@@ -38,7 +37,7 @@ export default function TrendingWidget({ language = 'English' }: { language?: st
                 <div className="glass-card rounded-xl p-4">
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
                         <TrendingUp size={13} />
-                        {isHindi ? 'सबसे ज़्यादा जाँचे गए' : 'Most Checked Products'}
+                        {'Most Checked Products'}
                     </h4>
                     <div className="space-y-2">
                         {data.topProducts.map((p, i) => (
@@ -65,7 +64,7 @@ export default function TrendingWidget({ language = 'English' }: { language?: st
                 <div className="glass-card rounded-xl p-4">
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
                         <AlertTriangle size={13} />
-                        {isHindi ? 'चिंता के सामग्री' : 'Ingredients of Concern'}
+                        {'Ingredients of Concern'}
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
                         {data.topConcerns.map((c, i) => {

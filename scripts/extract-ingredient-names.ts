@@ -24,7 +24,7 @@ import path from 'path'
 
 const OUTPUT_FILE = path.join(process.cwd(), 'scripts', 'ingredient-seed-list.json')
 const BATCH_SIZE = 5000
-const DB_NAME = 'consumer-truth-food'
+const DB_NAME = 'alzhal-food'
 const MIN_FREQUENCY = 20 // Ingredient must appear in at least 20 products
 
 // Non-ingredient tokens to filter out

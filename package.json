@@ -1,7 +1,7 @@
 {
-  "name": "consumer-truth",
+  "name": "alzhal",
   "version": "1.0.0",
-  "description": "",
+  "description": "Alzhal — regulation-grounded ingredient safety analyzer. Send a product photo, ingredient list, or voice note via web, WhatsApp, or Telegram; get a plain-language safety verdict backed by FDA, EU, WHO/IARC, FSSAI and other official sources.",
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
@@ -15,10 +15,30 @@
     "eval": "npx tsx scripts/eval-harness.ts",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": [],
-  "author": "",
-  "license": "UNLICENSED",
+  "keywords": [
+    "ingredient-safety",
+    "food-safety",
+    "regulatory",
+    "fda",
+    "fssai",
+    "iarc",
+    "cloudflare-workers",
+    "nextjs",
+    "gemini",
+    "whatsapp-bot",
+    "telegram-bot"
+  ],
+  "author": "Alzhal contributors",
+  "license": "Apache-2.0",
   "private": true,
+  "homepage": "https://github.com/quantumsequrity/alzhal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quantumsequrity/alzhal.git"
+  },
+  "bugs": {
+    "url": "https://github.com/quantumsequrity/alzhal/issues"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@tailwindcss/postcss": "^4.1.18",

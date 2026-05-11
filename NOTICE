@@ -1,0 +1,27 @@
+Alzhal
+Copyright 2026 Alzhal contributors
+
+This product includes software developed by the Alzhal contributors.
+
+This product depends on the following third-party data sources. Each
+source carries its own license; consult the source for terms before
+redistributing the underlying data.
+
+- Open Food Facts / Open Beauty Facts (database under ODbL 1.0; contents
+  under DbCL 1.0). See DATA_LICENSE.md.
+- U.S. FDA OpenFDA (public domain, with the FDA's standard disclaimer).
+- U.S. EPA CompTox Dashboard (public domain).
+- PubChem (NIH National Library of Medicine, public domain).
+- CAS Common Chemistry (CAS, attribution required, non-commercial).
+- WHO / IARC Monographs (WHO Press, attribution required).
+- EFSA OpenFoodTox (European Food Safety Authority, CC BY 4.0).
+- Health Canada Cosmetic Ingredient Hotlist (Government of Canada,
+  Open Government Licence - Canada).
+- FSANZ Food Standards Code (Australia / New Zealand, Creative Commons
+  Attribution 3.0 Australia).
+- US Code of Federal Regulations Title 21 (public domain).
+- USDA FoodData Central (public domain).
+
+Trademarks: "Alzhal" is intended as a project name only and is not a
+registered trademark. The Apache 2.0 License does not grant any
+trademark rights to the project name; see Section 6 of the License.

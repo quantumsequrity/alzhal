@@ -8,7 +8,11 @@
 
 import { cacheExternalData, getCachedExternalData } from './cache'
 
-const HEADERS = { 'User-Agent': 'ConsumerTruth-Hackathon/1.0 (bloodraven@example.com)' }
+// Public APIs ask callers to identify themselves so they can rate-limit and
+// contact maintainers if a client misbehaves. Override APP_CONTACT_EMAIL at
+// deploy time to point operators at you rather than the upstream project.
+const CONTACT = process.env.APP_CONTACT_EMAIL || 'maintainers@alzhal.app'
+const HEADERS = { 'User-Agent': `Alzhal/1.0 (+${CONTACT})` }
 
 // Timeout for external API calls (8 seconds)
 const FETCH_TIMEOUT = 8000

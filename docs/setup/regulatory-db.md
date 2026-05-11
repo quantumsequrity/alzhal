@@ -13,7 +13,7 @@ This is the grounded-facts database that replaces all LLM-generated regulatory c
 
 ```bash
 # 1. Create the D1 database
-npx wrangler d1 create consumer-truth-regulatory
+npx wrangler d1 create alzhal-regulatory
 ```
 
 Copy the returned `database_id` and add this binding to `wrangler.toml`:
@@ -21,7 +21,7 @@ Copy the returned `database_id` and add this binding to `wrangler.toml`:
 ```toml
 [[d1_databases]]
 binding        = "REGULATORY_DB"
-database_name  = "consumer-truth-regulatory"
+database_name  = "alzhal-regulatory"
 database_id    = "<paste-the-id-here>"
 ```
 
@@ -29,10 +29,10 @@ Apply the schema (locally and remotely):
 
 ```bash
 # Remote (production)
-npx wrangler d1 execute consumer-truth-regulatory --remote --file=scripts/d1-regulatory-schema.sql
+npx wrangler d1 execute alzhal-regulatory --remote --file=scripts/d1-regulatory-schema.sql
 
 # Local (development)
-npx wrangler d1 execute consumer-truth-regulatory --local  --file=scripts/d1-regulatory-schema.sql
+npx wrangler d1 execute alzhal-regulatory --local  --file=scripts/d1-regulatory-schema.sql
 ```
 
 ## Seeding IARC classifications
@@ -60,13 +60,13 @@ npx tsx scripts/seed-iarc-cig.ts
 Apply it:
 
 ```bash
-npx wrangler d1 execute consumer-truth-regulatory --remote --file=scripts/d1-regulatory-iarc.sql
+npx wrangler d1 execute alzhal-regulatory --remote --file=scripts/d1-regulatory-iarc.sql
 ```
 
 ## Verifying the load
 
 ```bash
-npx wrangler d1 execute consumer-truth-regulatory --remote --command \
+npx wrangler d1 execute alzhal-regulatory --remote --command \
   "SELECT jurisdiction, fact_type, COUNT(*) AS n FROM regulatory_fact GROUP BY jurisdiction, fact_type"
 ```
 
@@ -90,7 +90,7 @@ Downloaded and parsed automatically — no manual step.
 ```bash
 bash scripts/pull-bulk-data.sh ecfr         # fetches XML snapshots from eCFR API
 python3 scripts/seed-ecfr-cig.py            # parses XML → d1-regulatory-ecfr-21.sql
-npx wrangler d1 execute consumer-truth-regulatory --remote \
+npx wrangler d1 execute alzhal-regulatory --remote \
   --file=scripts/d1-regulatory-ecfr-21.sql
 ```
 
@@ -102,7 +102,7 @@ Your existing `INGREDIENTS_REF_DB` already contains IARC classifications from a 
 
 ```bash
 # 1. Export legacy IARC rows
-npx wrangler d1 execute consumer-truth-ingredients-ref --remote --json \
+npx wrangler d1 execute alzhal-ingredients-ref --remote --json \
   --command "SELECT name, name_original, cas_number, pubchem_cid, molecular_formula, molecular_weight, iupac_name, iarc_group, iarc_description, iarc_agent_name FROM ingredient_reference WHERE iarc_group IS NOT NULL" \
   > scripts/bulk-data/iarc-legacy-export.json
 
@@ -110,7 +110,7 @@ npx wrangler d1 execute consumer-truth-ingredients-ref --remote --json \
 npx tsx scripts/seed-iarc-from-legacy.ts
 
 # 3. Apply
-npx wrangler d1 execute consumer-truth-regulatory --remote \
+npx wrangler d1 execute alzhal-regulatory --remote \
   --file=scripts/d1-regulatory-iarc.sql
 ```
 
@@ -137,7 +137,7 @@ Add the D1 binding to `wrangler.toml`:
 ```toml
 [[d1_databases]]
 binding       = "REGULATORY_DB"
-database_name = "consumer-truth-regulatory"
+database_name = "alzhal-regulatory"
 database_id   = "<your-id>"
 ```
 
@@ -193,7 +193,7 @@ Then adapt `seed-openfoodfacts.py` to read CSV instead of Parquet (one-line swap
 
 ```bash
 python3 scripts/seed-openfoodfacts.py --limit 200000
-npx wrangler d1 execute consumer-truth-ingredients-ref --remote \
+npx wrangler d1 execute alzhal-ingredients-ref --remote \
   --file=scripts/d1-regulatory-off.sql
 ```
 

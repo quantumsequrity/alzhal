@@ -52,7 +52,7 @@ fetch() {
   skip_if_exists "${out}" && return 0
   log "FETCH ${url} -> ${out}"
   if curl -sSL --fail --retry 3 --retry-delay 2 --max-time 120 \
-          -A "ConsumerTruth-Ingester/1.0" \
+          -A "Alzhal-Ingester/1.0" \
           -o "${out}" "${url}"; then
     log "OK     ${out} ($(wc -c < "${out}") bytes)"
   else
@@ -82,7 +82,7 @@ pull_ecfr() {
   notify "FDA CFR Title 21 — food additives + GRAS + cosmetics parts"
   # eCFR snapshots are dated per-title; use the latest_issue_date, not today's date.
   local date
-  date="$(curl -sSL --fail --max-time 30 -A "ConsumerTruth-Ingester/1.0" \
+  date="$(curl -sSL --fail --max-time 30 -A "Alzhal-Ingester/1.0" \
             "https://www.ecfr.gov/api/versioner/v1/titles.json" \
             | python3 -c "import json,sys; d=json.load(sys.stdin); print([t for t in d['titles'] if t['number']==21][0]['latest_issue_date'])" 2>/dev/null)"
   if [ -z "${date}" ]; then

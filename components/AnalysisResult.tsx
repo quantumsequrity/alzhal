@@ -8,6 +8,20 @@ import {
     UtensilsCrossed, SprayCan, Droplets, FlaskConical, Ban,
     ThumbsUp, ThumbsDown, Eye, TrendingUp, Camera, Search
 } from 'lucide-react'
+import { WhatThisMeans, LearnMoreLinks } from './IngredientGuidance'
+
+// Map the internal 3-state verdict (+ banned list) to the broader 5-state
+// guidance verdict used by WhatThisMeans, so a banned ingredient always shows
+// the strongest message even if its analysis.category is just "danger".
+function toGuidanceVerdict(
+    verdict: 'safe' | 'warning' | 'danger',
+    bannedList: string[],
+): 'safe' | 'caution' | 'danger' | 'banned' | 'unknown' {
+    if (bannedList.length > 0) return 'banned'
+    if (verdict === 'safe') return 'safe'
+    if (verdict === 'warning') return 'caution'
+    return 'danger'
+}
 
 /* ========================================
    Types
@@ -225,19 +239,19 @@ function getNutrientBg(key: string, value: number): string {
     return 'bg-white/[0.03] border-white/5'
 }
 
-function NutritionCard({ nutrition, isHindi }: { nutrition: any; isHindi: boolean }) {
+function NutritionCard({ nutrition }: { nutrition: any }) {
     const nutriscoreGrade = (nutrition.nutriscore_grade || '').toUpperCase()
     const novaGroup = nutrition.nova_group ? String(nutrition.nova_group) : null
 
     const nutrients: { key: string; label: string; unit: string; field: string }[] = [
-        { key: 'energy', label: isHindi ? 'ऊर्जा' : 'Energy', unit: 'kcal', field: 'energy_kcal_100g' },
-        { key: 'fat', label: isHindi ? 'कुल वसा' : 'Total Fat', unit: 'g', field: 'fat_100g' },
-        { key: 'saturated_fat', label: isHindi ? 'संतृप्त वसा' : 'Saturated Fat', unit: 'g', field: 'saturated_fat_100g' },
-        { key: 'sugars', label: isHindi ? 'शक्कर' : 'Sugars', unit: 'g', field: 'sugars_100g' },
-        { key: 'proteins', label: isHindi ? 'प्रोटीन' : 'Protein', unit: 'g', field: 'proteins_100g' },
-        { key: 'salt', label: isHindi ? 'नमक' : 'Salt', unit: 'g', field: 'salt_100g' },
-        { key: 'fiber', label: isHindi ? 'फाइबर' : 'Fiber', unit: 'g', field: 'fiber_100g' },
-        { key: 'carbohydrates', label: isHindi ? 'कार्बोहाइड्रेट' : 'Carbohydrates', unit: 'g', field: 'carbohydrates_100g' },
+        { key: 'energy', label: 'Energy', unit: 'kcal', field: 'energy_kcal_100g' },
+        { key: 'fat', label: 'Total Fat', unit: 'g', field: 'fat_100g' },
+        { key: 'saturated_fat', label: 'Saturated Fat', unit: 'g', field: 'saturated_fat_100g' },
+        { key: 'sugars', label: 'Sugars', unit: 'g', field: 'sugars_100g' },
+        { key: 'proteins', label: 'Protein', unit: 'g', field: 'proteins_100g' },
+        { key: 'salt', label: 'Salt', unit: 'g', field: 'salt_100g' },
+        { key: 'fiber', label: 'Fiber', unit: 'g', field: 'fiber_100g' },
+        { key: 'carbohydrates', label: 'Carbohydrates', unit: 'g', field: 'carbohydrates_100g' },
     ]
 
     // Filter to only show nutrients that have data
@@ -254,10 +268,10 @@ function NutritionCard({ nutrition, isHindi }: { nutrition: any; isHindi: boolea
         { label: 'Vitamin C', field: 'vitamin_c_100g' },
         { label: 'Vitamin D', field: 'vitamin_d_100g' },
         { label: 'Vitamin B12', field: 'vitamin_b12_100g' },
-        { label: isHindi ? 'कैल्शियम' : 'Calcium', field: 'calcium_100g' },
-        { label: isHindi ? 'आयरन' : 'Iron', field: 'iron_100g' },
-        { label: isHindi ? 'पोटैशियम' : 'Potassium', field: 'potassium_100g' },
-        { label: isHindi ? 'जिंक' : 'Zinc', field: 'zinc_100g' },
+        { label: 'Calcium', field: 'calcium_100g' },
+        { label: 'Iron', field: 'iron_100g' },
+        { label: 'Potassium', field: 'potassium_100g' },
+        { label: 'Zinc', field: 'zinc_100g' },
     ]
     const availableVitamins = vitamins.filter(v => {
         const val = parseFloat(nutrition[v.field])
@@ -273,10 +287,10 @@ function NutritionCard({ nutrition, isHindi }: { nutrition: any; isHindi: boolea
     }
 
     const novaLabels: Record<string, string> = {
-        '1': isHindi ? 'असंसाधित' : 'Unprocessed',
-        '2': isHindi ? 'संसाधित सामग्री' : 'Processed ingredients',
-        '3': isHindi ? 'संसाधित खाद्य' : 'Processed food',
-        '4': isHindi ? 'अति-संसाधित' : 'Ultra-processed',
+        '1': 'Unprocessed',
+        '2': 'Processed ingredients',
+        '3': 'Processed food',
+        '4': 'Ultra-processed',
     }
 
     return (
@@ -285,8 +299,8 @@ function NutritionCard({ nutrition, isHindi }: { nutrition: any; isHindi: boolea
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-base font-semibold text-white flex items-center gap-2">
                         <UtensilsCrossed size={18} className="text-orange-400 flex-shrink-0" />
-                        {isHindi ? 'पोषण जानकारी' : 'Nutrition Facts'}
-                        <span className="text-[10px] text-gray-600 font-normal uppercase">{isHindi ? 'प्रति 100g' : 'per 100g'}</span>
+                        {'Nutrition Facts'}
+                        <span className="text-[10px] text-gray-600 font-normal uppercase">{'per 100g'}</span>
                     </h3>
 
                     {/* Nutri-Score + NOVA badges */}
@@ -330,7 +344,7 @@ function NutritionCard({ nutrition, isHindi }: { nutrition: any; isHindi: boolea
                 {availableVitamins.length > 0 && (
                     <div>
                         <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mb-2">
-                            {isHindi ? 'विटामिन और खनिज' : 'Vitamins & Minerals'}
+                            {'Vitamins & Minerals'}
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                             {availableVitamins.map(v => {
@@ -349,7 +363,7 @@ function NutritionCard({ nutrition, isHindi }: { nutrition: any; isHindi: boolea
                 {novaGroup && novaLabels[novaGroup] && (
                     <p className="text-[10px] text-gray-600 mt-3">
                         NOVA {novaGroup}: {novaLabels[novaGroup]}
-                        {novaGroup === '4' && (isHindi ? ' - इसमें कई संसाधित सामग्री हो सकती हैं' : ' - may contain many processed additives')}
+                        {novaGroup === '4' && (' - may contain many processed additives')}
                     </p>
                 )}
             </div>
@@ -404,7 +418,6 @@ function StatusCard({ flag, label, value }: { flag: string; label: string; value
 
 function IngredientFeedback({ scanId, ingredientName, language }: { scanId: string; ingredientName: string; language: string }) {
     const [submitted, setSubmitted] = useState<'up' | 'down' | null>(null)
-    const isHindi = language === 'Hindi'
 
     const handleFeedback = async (rating: 'up' | 'down') => {
         try {
@@ -420,14 +433,14 @@ function IngredientFeedback({ scanId, ingredientName, language }: { scanId: stri
     if (submitted) {
         return (
             <span className="text-[10px] text-gray-600">
-                {submitted === 'down' ? (isHindi ? 'गलत रिपोर्ट की गई' : 'Flagged') : (isHindi ? 'धन्यवाद' : 'Thanks')}
+                {submitted === 'down' ? ('Flagged') : ('Thanks')}
             </span>
         )
     }
 
     return (
         <div className="flex items-center gap-1">
-            <span className="text-[10px] text-gray-600 mr-1">{isHindi ? 'सही है?' : 'Accurate?'}</span>
+            <span className="text-[10px] text-gray-600 mr-1">{'Accurate?'}</span>
             <button
                 onClick={(e) => { e.stopPropagation(); handleFeedback('up') }}
                 className="p-1 rounded hover:bg-green-500/10 text-gray-600 hover:text-green-400 transition"
@@ -454,7 +467,6 @@ function FeedbackButtons({ scanId, language }: { scanId: string; language: strin
     const [submitted, setSubmitted] = useState<'up' | 'down' | null>(null)
     const [showComment, setShowComment] = useState(false)
     const [comment, setComment] = useState('')
-    const isHindi = language === 'Hindi'
 
     const handleFeedback = async (rating: 'up' | 'down') => {
         setSubmitted(rating)
@@ -489,7 +501,7 @@ function FeedbackButtons({ scanId, language }: { scanId: string; language: strin
     return (
         <div className="flex flex-col items-center gap-3 py-2">
             <p className="text-xs text-gray-500">
-                {isHindi ? 'क्या यह रिपोर्ट उपयोगी थी?' : 'Was this report helpful?'}
+                {'Was this report helpful?'}
             </p>
             <div className="flex gap-2">
                 <button
@@ -504,7 +516,7 @@ function FeedbackButtons({ scanId, language }: { scanId: string; language: strin
                     }`}
                 >
                     <ThumbsUp size={14} />
-                    {isHindi ? 'हाँ' : 'Yes'}
+                    {'Yes'}
                 </button>
                 <button
                     onClick={() => handleFeedback('down')}
@@ -518,7 +530,7 @@ function FeedbackButtons({ scanId, language }: { scanId: string; language: strin
                     }`}
                 >
                     <ThumbsDown size={14} />
-                    {isHindi ? 'नहीं' : 'No'}
+                    {'No'}
                 </button>
             </div>
             {showComment && (
@@ -527,7 +539,7 @@ function FeedbackButtons({ scanId, language }: { scanId: string; language: strin
                         type="text"
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        placeholder={isHindi ? 'क्या सुधार चाहिए?' : 'What could be better?'}
+                        placeholder={'What could be better?'}
                         className="flex-1 px-3 py-2 rounded-lg bg-black/30 border border-white/8 text-white text-xs placeholder-gray-600 focus:border-red-500/40 transition-colors"
                         maxLength={500}
                     />
@@ -541,7 +553,7 @@ function FeedbackButtons({ scanId, language }: { scanId: string; language: strin
             )}
             {submitted && !showComment && (
                 <p className="text-xs text-gray-600 animate-fade-in">
-                    {isHindi ? 'धन्यवाद!' : 'Thanks for your feedback!'}
+                    {'Thanks for your feedback!'}
                 </p>
             )}
         </div>
@@ -554,7 +566,6 @@ function FeedbackButtons({ scanId, language }: { scanId: string; language: strin
 
 function ShareModal({ text, onClose, language, scanId }: { text: string; onClose: () => void; language: string; scanId?: string }) {
     const [copied, setCopied] = useState(false)
-    const isHindi = language === 'Hindi'
 
     const trackShare = (method: 'whatsapp' | 'copy') => {
         if (!scanId) return
@@ -583,7 +594,7 @@ function ShareModal({ text, onClose, language, scanId }: { text: string; onClose
                 {/* Drag handle for mobile */}
                 <div className="w-10 h-1 rounded-full bg-white/20 mx-auto sm:hidden" />
                 <h3 className="text-lg font-semibold text-white">
-                    {isHindi ? 'रिपोर्ट शेयर करें' : 'Share Report'}
+                    {'Share Report'}
                 </h3>
                 <div className="p-3 rounded-xl bg-black/30 border border-white/5 text-sm text-gray-300 whitespace-pre-line max-h-40 overflow-y-auto">
                     {text}
@@ -605,11 +616,11 @@ function ShareModal({ text, onClose, language, scanId }: { text: string; onClose
                         }`}
                     >
                         {copied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
-                        {copied ? (isHindi ? 'कॉपी हो गया!' : 'Copied!') : (isHindi ? 'कॉपी करें' : 'Copy')}
+                        {copied ? ('Copied!') : ('Copy')}
                     </button>
                 </div>
                 <button onClick={onClose} className="w-full py-3 text-sm text-gray-500 hover:text-white transition min-h-[44px]">
-                    {isHindi ? 'बंद करें' : 'Close'}
+                    {'Close'}
                 </button>
             </div>
         </div>
@@ -627,11 +638,7 @@ function FollowUpQuestion({ productName, language, scanId }: { productName: stri
     const [error, setError] = useState<string | null>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const threadRef = useRef<HTMLDivElement>(null)
-    const isHindi = language === 'Hindi'
-
-    const suggestedQuestions = isHindi
-        ? ['क्या यह बच्चों के लिए सुरक्षित है?', 'क्या कोई प्राकृतिक विकल्प है?', 'क्या इसमें एलर्जेन हैं?']
-        : ['Is this safe for children?', 'Are there natural alternatives?', 'Does this contain allergens?']
+    const suggestedQuestions = ['Is this safe for children?', 'Are there natural alternatives?', 'Does this contain allergens?']
 
     const handleAsk = async (q?: string) => {
         const questionText = q || question
@@ -673,7 +680,7 @@ function FollowUpQuestion({ productName, language, scanId }: { productName: stri
         <div className="glass-card rounded-2xl p-4 sm:p-5 md:p-6 space-y-4 animate-fade-in-up">
             <h4 className="text-base font-semibold text-white flex items-center gap-2">
                 <MessageCircle size={18} className="text-blue-400 flex-shrink-0" />
-                {isHindi ? 'और सवाल पूछें' : 'Ask a Follow-up Question'}
+                {'Ask a Follow-up Question'}
             </h4>
 
             {/* Suggested questions (only show if no conversation yet) */}
@@ -723,7 +730,7 @@ function FollowUpQuestion({ productName, language, scanId }: { productName: stri
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
-                    placeholder={isHindi ? 'अपना सवाल लिखें...' : 'Type your question...'}
+                    placeholder={'Type your question...'}
                     disabled={loading}
                     className="flex-1 min-w-0 px-4 py-3 rounded-xl bg-black/30 border border-white/8 text-white text-sm placeholder-gray-600 focus:border-blue-500/40 transition-colors disabled:opacity-50"
                 />
@@ -755,7 +762,6 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
     const [showShareModal, setShowShareModal] = useState(false)
     const [filterVerdict, setFilterVerdict] = useState<'all' | 'safe' | 'warning' | 'danger'>('all')
     const [searchQuery, setSearchQuery] = useState('')
-    const isHindi = language === 'Hindi'
 
     const product = data.product
     const ingredients = data.ingredients || []
@@ -780,9 +786,9 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
         : 0
 
     let scoreColor = 'text-green-400'
-    let scoreLabel = isHindi ? 'सुरक्षित' : 'Safe'
-    if (safetyScore < 70) { scoreColor = 'text-yellow-400'; scoreLabel = isHindi ? 'सावधानी' : 'Caution' }
-    if (safetyScore < 40) { scoreColor = 'text-red-400'; scoreLabel = isHindi ? 'खतरनाक' : 'Danger' }
+    let scoreLabel = 'Safe'
+    if (safetyScore < 70) { scoreColor = 'text-yellow-400'; scoreLabel = 'Caution' }
+    if (safetyScore < 40) { scoreColor = 'text-red-400'; scoreLabel = 'Danger' }
 
     const toggleIngredient = (name: string) => {
         setExpandedIngredients(prev => {
@@ -846,7 +852,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                             {data.scannedCount && data.scannedCount > 1 && (
                                 <p className="text-xs text-gray-600 flex items-center gap-1.5">
                                     <Eye size={12} />
-                                    {isHindi ? `${data.scannedCount} बार जाँचा गया` : `Checked ${data.scannedCount} times`}
+                                    {`Checked ${data.scannedCount} times`}
                                 </p>
                             )}
 
@@ -857,7 +863,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.10] hover:border-white/15 transition-all duration-300 text-sm font-semibold text-gray-400 hover:text-white active:scale-95 min-h-[44px] group"
                                 >
                                     <Share2 size={14} className="group-hover:scale-110 transition-transform" />
-                                    {isHindi ? 'शेयर करें' : 'Share Report'}
+                                    {'Share Report'}
                                 </button>
                             </div>
                         </div>
@@ -866,10 +872,10 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                         <div className="flex items-center gap-5 p-5 md:p-6 rounded-2xl bg-black/30 border border-white/[0.06] shadow-inner">
                             <div className="space-y-1.5">
                                 <p className="text-[11px] text-gray-400 uppercase tracking-widest font-bold">
-                                    {isHindi ? 'सुरक्षा स्कोर' : 'Safety Score'}
+                                    {'Safety Score'}
                                 </p>
                                 <p className="text-[10px] text-gray-600 hidden md:block leading-relaxed">
-                                    {isHindi ? 'नियामक डेटा पर आधारित' : 'Based on regulatory data'}
+                                    {'Based on regulatory data'}
                                 </p>
                             </div>
                             <ScoreGauge score={safetyScore} size={110} />
@@ -880,7 +886,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                     <div className="mt-6 pt-6 border-t border-white/5">
                         <div className="flex items-center gap-2 mb-3">
                             <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {isHindi ? 'सामग्री विभाजन' : 'Ingredient Breakdown'}
+                                {'Ingredient Breakdown'}
                             </span>
                         </div>
                         <div className="h-2.5 rounded-full bg-white/5 overflow-hidden flex shadow-inner">
@@ -911,7 +917,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                     {totalCount}
                                 </div>
                                 <span className="text-xs text-gray-500 font-medium">
-                                    {isHindi ? 'कुल' : 'Total'}
+                                    {'Total'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 p-3 rounded-xl bg-green-500/5 border border-green-500/10">
@@ -919,7 +925,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                     {safeCount}
                                 </div>
                                 <span className="text-xs text-green-500/70 font-medium">
-                                    {isHindi ? 'सुरक्षित' : 'Safe'}
+                                    {'Safe'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10">
@@ -927,7 +933,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                     {warningCount}
                                 </div>
                                 <span className="text-xs text-yellow-500/70 font-medium">
-                                    {isHindi ? 'सावधानी' : 'Caution'}
+                                    {'Caution'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
@@ -935,7 +941,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                     {dangerCount}
                                 </div>
                                 <span className="text-xs text-red-500/70 font-medium">
-                                    {isHindi ? 'खतरनाक' : 'Avoid'}
+                                    {'Avoid'}
                                 </span>
                             </div>
                         </div>
@@ -944,14 +950,14 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
             </div>
 
             {/* ====== NUTRITION CARD ====== */}
-            {data.nutrition && <NutritionCard nutrition={data.nutrition} isHindi={isHindi} />}
+            {data.nutrition && <NutritionCard nutrition={data.nutrition} />}
 
             {/* ====== INGREDIENT LIST HEADER (sticky) ====== */}
             <div className="sticky top-[53px] z-30 bg-[#09090b]/95 backdrop-blur-md -mx-4 px-4 py-3 space-y-3 border-b border-white/5">
                 <div className="flex items-center justify-between">
                     <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
                         <Info size={18} className="text-blue-400 flex-shrink-0" />
-                        {isHindi ? 'विस्तृत विश्लेषण' : 'Detailed Analysis'}
+                        {'Detailed Analysis'}
                         <span className="text-sm text-gray-600 font-normal">({filteredIngredients.length})</span>
                     </h3>
 
@@ -961,8 +967,8 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                         className="px-3 py-2 rounded-lg text-xs font-medium text-gray-500 hover:text-white bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all min-h-[36px] flex-shrink-0"
                     >
                         {expandedIngredients.size === ingredients.length
-                            ? (isHindi ? 'सब बंद' : 'Collapse')
-                            : (isHindi ? 'सब खोलें' : 'Expand All')
+                            ? ('Collapse')
+                            : ('Expand All')
                         }
                     </button>
                 </div>
@@ -975,7 +981,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder={isHindi ? 'सामग्री खोजें...' : 'Search ingredients...'}
+                            placeholder={'Search ingredients...'}
                             className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/8 text-sm text-white placeholder-gray-600 focus:border-blue-500/40 transition-colors"
                         />
                     </div>
@@ -985,10 +991,10 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                 <div className="overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
                     <div className="flex rounded-xl bg-white/[0.03] border border-white/5 p-1 gap-0.5 w-fit sm:w-full">
                         {[
-                            { key: 'all' as const, label: isHindi ? 'सब' : 'All', count: totalCount },
-                            { key: 'safe' as const, label: isHindi ? 'सुरक्षित' : 'Safe', count: safeCount },
-                            { key: 'warning' as const, label: isHindi ? 'सावधानी' : 'Caution', count: warningCount },
-                            { key: 'danger' as const, label: isHindi ? 'खतरा' : 'Avoid', count: dangerCount },
+                            { key: 'all' as const, label: 'All', count: totalCount },
+                            { key: 'safe' as const, label: 'Safe', count: safeCount },
+                            { key: 'warning' as const, label: 'Caution', count: warningCount },
+                            { key: 'danger' as const, label: 'Avoid', count: dangerCount },
                         ].map(f => (
                             <button
                                 key={f.key}
@@ -1022,7 +1028,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                             bg: 'bg-red-500/[0.03]',
                             hoverBg: 'hover:bg-red-500/[0.06]',
                             badge: 'bg-red-500 text-white',
-                            badgeLabel: isHindi ? 'खतरनाक' : 'AVOID',
+                            badgeLabel: 'AVOID',
                             text: 'text-red-400',
                             icon: <XCircle size={18} />,
                         },
@@ -1031,7 +1037,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                             bg: 'bg-yellow-500/[0.02]',
                             hoverBg: 'hover:bg-yellow-500/[0.04]',
                             badge: 'bg-yellow-500 text-black',
-                            badgeLabel: isHindi ? 'सावधानी' : 'CAUTION',
+                            badgeLabel: 'CAUTION',
                             text: 'text-yellow-400',
                             icon: <AlertTriangle size={18} />,
                         },
@@ -1040,7 +1046,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                             bg: 'bg-white/[0.01]',
                             hoverBg: 'hover:bg-white/[0.03]',
                             badge: 'bg-green-500 text-white',
-                            badgeLabel: isHindi ? 'सुरक्षित' : 'SAFE',
+                            badgeLabel: 'SAFE',
                             text: 'text-white',
                             icon: <CheckCircle2 size={18} />,
                         },
@@ -1082,7 +1088,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                     {bannedList.length > 0 && (
                                         <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold bg-red-500/15 text-red-400 rounded-lg border border-red-500/20">
                                             <Ban size={10} />
-                                            {isHindi ? 'प्रतिबंधित' : 'BANNED'}
+                                            {'BANNED'}
                                         </span>
                                     )}
                                     <span className={`inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${cfg.badge}`}>
@@ -1096,7 +1102,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
 
                             {/* Expanded Content */}
                             <div className={`transition-all duration-500 ease-in-out ${
-                                isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
+                                isExpanded ? 'max-h-[2500px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
                             }`}>
                                 <div className="border-t border-white/5 bg-black/20 p-4 sm:p-5 md:p-6 space-y-4 sm:space-y-5">
 
@@ -1104,6 +1110,15 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                     <p className="text-sm text-gray-300 leading-relaxed">
                                         {analysis.translated_text || analysis.simple_name}
                                     </p>
+
+                                    {/* Plain-language guidance — shown FIRST so the user
+                                        sees a clear takeaway before the regulatory detail.
+                                        Renders in the user's language when a verified
+                                        translation exists; otherwise falls back to English. */}
+                                    <WhatThisMeans
+                                        verdict={toGuidanceVerdict(verdict, bannedList)}
+                                        language={language || 'English'}
+                                    />
 
                                     {/* Critical Alerts */}
                                     {verdict !== 'safe' && analysis.concerns && analysis.concerns.length > 0 && (
@@ -1121,8 +1136,8 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                                         verdict === 'danger' ? 'text-red-400' : 'text-yellow-400'
                                                     }`}>
                                                         {verdict === 'danger'
-                                                            ? (isHindi ? 'गंभीर सुरक्षा चेतावनी' : 'Critical Safety Warning')
-                                                            : (isHindi ? 'सावधानी आवश्यक' : 'Safety Concerns')}
+                                                            ? ('Critical Safety Warning')
+                                                            : ('Safety Concerns')}
                                                     </h5>
                                                     <ul className="space-y-1.5">
                                                         {analysis.concerns.filter(c => c !== 'None').map((c, i) => (
@@ -1145,7 +1160,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                             <div className="flex items-center gap-2 mb-2">
                                                 <Ban size={14} className="text-red-400" />
                                                 <p className="text-red-400 font-bold text-xs uppercase tracking-wider">
-                                                    {isHindi ? 'इन देशों में प्रतिबंधित' : 'Banned in'}
+                                                    {'Banned in'}
                                                 </p>
                                             </div>
                                             <div className="flex flex-wrap gap-1.5">
@@ -1164,26 +1179,26 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                             <div className="flex items-center gap-2 mb-2">
                                                 <TrendingUp size={14} className="text-red-400" />
                                                 <p className="text-red-400 font-bold text-xs uppercase tracking-wider">
-                                                    {isHindi ? 'सुरक्षित सीमा से अधिक' : 'EXCEEDS SAFE LIMIT'}
+                                                    {'EXCEEDS SAFE LIMIT'}
                                                 </p>
                                             </div>
                                             <div className="space-y-1.5">
                                                 {analysis.limit_exceeded.fssai?.exceeded && (
                                                     <p className="text-sm text-red-300">
-                                                        FSSAI: {isHindi ? 'अनुमत सीमा' : 'Max allowed'} {analysis.limit_exceeded.fssai.max_allowed}
-                                                        {analysis.limit_exceeded.fssai.typical_use && ` (${isHindi ? 'सामान्य उपयोग' : 'Typical'}: ${analysis.limit_exceeded.fssai.typical_use})`}
+                                                        FSSAI: {'Max allowed'} {analysis.limit_exceeded.fssai.max_allowed}
+                                                        {analysis.limit_exceeded.fssai.typical_use && ` (${'Typical'}: ${analysis.limit_exceeded.fssai.typical_use})`}
                                                     </p>
                                                 )}
                                                 {analysis.limit_exceeded.eu?.exceeded && (
                                                     <p className="text-sm text-red-300">
-                                                        EU: {isHindi ? 'अनुमत सीमा' : 'Max allowed'} {analysis.limit_exceeded.eu.max_allowed}
-                                                        {analysis.limit_exceeded.eu.typical_use && ` (${isHindi ? 'सामान्य उपयोग' : 'Typical'}: ${analysis.limit_exceeded.eu.typical_use})`}
+                                                        EU: {'Max allowed'} {analysis.limit_exceeded.eu.max_allowed}
+                                                        {analysis.limit_exceeded.eu.typical_use && ` (${'Typical'}: ${analysis.limit_exceeded.eu.typical_use})`}
                                                     </p>
                                                 )}
                                                 {analysis.limit_exceeded.fda?.exceeded && (
                                                     <p className="text-sm text-red-300">
-                                                        FDA: {isHindi ? 'अनुमत सीमा' : 'Max allowed'} {analysis.limit_exceeded.fda.max_allowed}
-                                                        {analysis.limit_exceeded.fda.typical_use && ` (${isHindi ? 'सामान्य उपयोग' : 'Typical'}: ${analysis.limit_exceeded.fda.typical_use})`}
+                                                        FDA: {'Max allowed'} {analysis.limit_exceeded.fda.max_allowed}
+                                                        {analysis.limit_exceeded.fda.typical_use && ` (${'Typical'}: ${analysis.limit_exceeded.fda.typical_use})`}
                                                     </p>
                                                 )}
                                             </div>
@@ -1196,7 +1211,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                             <div className="flex items-center gap-2 mb-2">
                                                 <AlertTriangle size={14} className="text-orange-400" />
                                                 <p className="text-orange-400 font-bold text-xs uppercase tracking-wider">
-                                                    {isHindi ? 'क्षेत्रीय प्रतिबंध विरोध' : 'Regional Ban Conflict'}
+                                                    {'Regional Ban Conflict'}
                                                 </p>
                                             </div>
                                             <ul className="space-y-1">
@@ -1214,7 +1229,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                     <div>
                                         <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
                                             <ShieldCheck size={14} />
-                                            {isHindi ? 'नियामक स्थिति' : 'Regulatory Status'}
+                                            {'Regulatory Status'}
                                         </h5>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                                             {regStatus?.india_fssai && regStatus.india_fssai !== 'Data not available' && (
@@ -1252,7 +1267,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                     {safetyLimits && (safetyLimits.fssai_max || safetyLimits.eu_max || safetyLimits.fda_max) && (
                                         <div>
                                             <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                                                {isHindi ? 'सुरक्षित सीमा' : 'Safety Limits'}
+                                                {'Safety Limits'}
                                             </h5>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
                                                 {safetyLimits.fssai_max && safetyLimits.fssai_max !== 'Not specified' && (
@@ -1282,7 +1297,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                         {analysis.common_uses && analysis.common_uses.length > 0 && (
                                             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
                                                 <p className="text-gray-600 text-[10px] uppercase tracking-wider font-bold mb-1">
-                                                    {isHindi ? 'उपयोग' : 'Common Uses'}
+                                                    {'Common Uses'}
                                                 </p>
                                                 <p className="text-gray-300 text-sm">{analysis.common_uses.join(', ')}</p>
                                             </div>
@@ -1290,7 +1305,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                         {analysis.chemical_formula && analysis.chemical_formula !== 'N/A' && (
                                             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
                                                 <p className="text-gray-600 text-[10px] uppercase tracking-wider font-bold mb-1">
-                                                    {isHindi ? 'रासायनिक सूत्र' : 'Chemical Formula'}
+                                                    {'Chemical Formula'}
                                                 </p>
                                                 <p className="text-blue-300 font-mono text-sm">{analysis.chemical_formula}</p>
                                             </div>
@@ -1302,7 +1317,7 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                         <div className="pt-3 border-t border-white/5">
                                             <h5 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center gap-1">
                                                 <BookOpen size={11} />
-                                                {isHindi ? 'स्रोत' : 'Sources'}
+                                                {'Sources'}
                                             </h5>
                                             <div className="flex flex-wrap gap-1.5">
                                                 {analysis.sources_cited.map((source, i) => (
@@ -1321,13 +1336,13 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                             <div className="flex items-center justify-between mb-2">
                                                 <h5 className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-wider flex items-center gap-1">
                                                     <ShieldCheck size={11} />
-                                                    {isHindi ? 'सरकारी रिकॉर्ड' : 'Official records'}
+                                                    {'Official records'}
                                                 </h5>
                                                 <span
                                                     className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                                    title="This verdict was derived from structured regulatory facts in the database, not from an AI-generated claim. Every row below has a clickable source URL."
+                                                    title="Every line here is a real regulator's text, with a link to the source. The AI did not write it."
                                                 >
-                                                    grounded
+                                                    {'verified'}
                                                 </span>
                                             </div>
                                             <div className="space-y-1">
@@ -1358,18 +1373,17 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                                         </div>
                                     )}
 
-                                    {/* EPA Link */}
-                                    {analysis.epa_link && (
-                                        <a
-                                            href={analysis.epa_link}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-2 text-xs text-blue-400/80 hover:text-blue-300 transition group/link"
-                                        >
-                                            <ExternalLink size={12} className="group-hover/link:translate-x-0.5 transition-transform" />
-                                            View on EPA CompTox Dashboard
-                                        </a>
-                                    )}
+                                    {/* Consumer-friendly external references — every link is
+                                        a free public database the user can cross-check us against. */}
+                                    <LearnMoreLinks
+                                        input={{
+                                            name: item.name,
+                                            casNumber: analysis.cas_number,
+                                            pubchemCid: (analysis as any).pubchem_cid ?? null,
+                                            eNumber: (analysis as any).e_number ?? null,
+                                        }}
+                                        language={language || 'English'}
+                                    />
 
                                     {/* Per-ingredient feedback */}
                                     {data.scanId && (
@@ -1393,12 +1407,10 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
                         </div>
                         <div>
                             <p className="text-sm font-semibold text-blue-300 mb-1">
-                                {isHindi ? 'अधिक सटीक विश्लेषण चाहिए?' : 'Want a more accurate analysis?'}
+                                {'Want a more accurate analysis?'}
                             </p>
                             <p className="text-xs text-gray-400 leading-relaxed">
-                                {isHindi
-                                    ? 'इस रिपोर्ट में AI द्वारा अनुमानित सामग्री है। पैक के पीछे की सामग्री सूची की तस्वीर भेजें - सटीक परिणाम पाएं।'
-                                    : 'This report is based on AI-estimated ingredients. For exact results, send a photo of the ingredients list on the back of the pack.'}
+                                {'This report is based on AI-estimated ingredients. For exact results, send a photo of the ingredients list on the back of the pack.'}
                             </p>
                         </div>
                     </div>
@@ -1415,15 +1427,31 @@ export default function AnalysisResult({ data, language = 'English' }: AnalysisR
 
             {/* ====== DATA SOURCE DISCLAIMER ====== */}
             <div className="glass-card rounded-2xl p-5 text-center space-y-2">
-                <div className="flex flex-wrap justify-center gap-2 text-[10px] text-gray-600">
-                    {['FDA (fda.gov)', 'EU CosIng (ec.europa.eu)', 'WHO/IARC (who.int)', 'BIS (bis.gov.in)', 'FSSAI (fssai.gov.in)', 'EPA SCIL (epa.gov)'].map((src, i) => (
+                <p className="text-gray-500 text-[11px] font-medium">
+                    {'Our official sources'}
+                </p>
+                <div className="flex flex-wrap justify-center gap-1.5 text-[10px] text-gray-600">
+                    {[
+                        'FDA',
+                        'FDA CFR 21',
+                        'EU CosIng',
+                        'EFSA',
+                        'WHO/IARC',
+                        'Codex',
+                        'FSSAI',
+                        'BIS',
+                        'EPA SCIL',
+                        'Health Canada',
+                        'FSANZ',
+                        'PubChem (NIH)',
+                        'CAS',
+                        'Open Food Facts',
+                    ].map((src, i) => (
                         <span key={i} className="px-2 py-0.5 rounded bg-white/[0.02] border border-white/5">{src}</span>
                     ))}
                 </div>
-                <p className="text-gray-600 text-[10px]">
-                    {isHindi
-                        ? 'डेटा स्रोत: फरवरी 2026 तक सत्यापित। यह केवल शैक्षिक जानकारी है, चिकित्सा सलाह नहीं।'
-                        : 'Data verified as of February 2026. Educational information only, not medical or health advice.'}
+                <p className="text-gray-600 text-[10px] leading-relaxed pt-1">
+                    {'Every safety claim links back to a specific regulation. This is educational information, not medical advice — consult a professional for personal health concerns.'}
                 </p>
             </div>
 

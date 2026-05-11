@@ -4,7 +4,7 @@
  * Links to FOOD_DB via `code` (barcode).
  *
  * Usage:  npx tsx scripts/import-nutrition.ts
- * Import: npx wrangler d1 execute consumer-truth-nutrition --remote --file=scripts/d1-nutrition.sql
+ * Import: npx wrangler d1 execute alzhal-nutrition --remote --file=scripts/d1-nutrition.sql
  */
 
 import { createReadStream, createWriteStream, existsSync } from 'fs'
@@ -226,7 +226,7 @@ CREATE INDEX IF NOT EXISTS idx_nutrition_code ON food_nutrition(code);
   out.end()
 
   console.log(`\nDone! Wrote ${totalWritten.toLocaleString()} rows. Skipped ${skipped.toLocaleString()}.`)
-  console.log(`  npx wrangler d1 execute consumer-truth-nutrition --remote --file=scripts/d1-nutrition.sql`)
+  console.log(`  npx wrangler d1 execute alzhal-nutrition --remote --file=scripts/d1-nutrition.sql`)
 }
 
 function writeBatch(out: ReturnType<typeof createWriteStream>, batch: string[][]) {
