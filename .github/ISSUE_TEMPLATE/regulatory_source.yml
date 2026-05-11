@@ -1,0 +1,46 @@
+name: Add a regulatory source
+description: Propose adding a new regulator or jurisdiction to Alzhal's grounded pipeline.
+labels: ["regulatory-source"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every Alzhal verdict is backed by a specific regulation with a clickable URL. Adding a regulator means writing an ingester (`scripts/seed-*.{py,ts}`) that produces structured `regulatory_fact` rows, each with a `source_url` + `snapshot_date`.
+  - type: input
+    id: regulator
+    attributes:
+      label: Regulator / authority
+      placeholder: e.g. ANVISA (Brazil), MFDS (Korea), TGA (Australia)
+    validations:
+      required: true
+  - type: input
+    id: jurisdiction
+    attributes:
+      label: Jurisdiction code
+      description: Short code we'd use in the DB. See JURISDICTIONS_WE_CHECK in lib/gemini-renderer.ts.
+      placeholder: e.g. BR_ANVISA, KR_MFDS
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Where is the data?
+      description: Direct URL to a machine-readable source (XML, CSV, JSON, or stable PDF). Include the source's license terms if known.
+    validations:
+      required: true
+  - type: textarea
+    id: coverage
+    attributes:
+      label: What does it cover?
+      description: Food additives? Cosmetic ingredients? Both? Banned vs permitted vs restricted?
+    validations:
+      required: true
+  - type: input
+    id: volume
+    attributes:
+      label: Approximate row count
+      placeholder: e.g. ~700 ingredients
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?

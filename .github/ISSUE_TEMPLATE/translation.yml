@@ -1,0 +1,45 @@
+name: Translation contribution
+description: Submit a verified translation for one of Alzhal's supported languages.
+labels: ["translation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the translation policy in `CONTRIBUTING.md` first. We only accept translations confirmed by a native speaker. There is no machine-translated tier.
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      placeholder: e.g. Tamil, Telugu, Bengali
+    validations:
+      required: true
+  - type: dropdown
+    id: speaker
+    attributes:
+      label: Are you a native speaker?
+      options:
+        - Yes
+        - No, but I have native-speaker review
+    validations:
+      required: true
+  - type: textarea
+    id: translations
+    attributes:
+      label: Proposed translations
+      description: |
+        Paste a copy of the English `TRANSLATIONS` entry from `components/IngredientGuidance.tsx` with your language's strings filled in. Match the structure exactly.
+      placeholder: |
+        Tamil: {
+          safe: { title: '...', action: '...' },
+          caution: { title: '...', action: '...' },
+          danger: { title: '...', action: '...' },
+          banned: { title: '...', action: '...' },
+          unknown: { title: '...', action: '...' },
+        }
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Translation notes
+      description: Anything reviewers should know — idioms, gender choices, regional variants used, etc.
