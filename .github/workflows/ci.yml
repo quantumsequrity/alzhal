@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  typecheck-and-lint:
-    name: Typecheck and lint
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -32,7 +32,6 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Lint
-        run: npm run lint
-        # Lint warnings should not block CI; only errors fail the job.
-        # Next.js exits non-zero on errors but allows warnings through.
+  # Lint is intentionally not wired up yet. Next.js 16 removed `next lint`
+  # and the project has no standalone eslint config. Add `eslint.config.mjs`
+  # and a working `lint` script before adding a lint job here.
