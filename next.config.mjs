@@ -1,6 +1,12 @@
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-initOpenNextCloudflareForDev();
+// `initOpenNextCloudflareForDev` wires up local Cloudflare bindings (D1, R2,
+// AI) for `next dev`. It must NOT run during production builds — it tries to
+// open a remote-proxy session to Cloudflare which requires `wrangler login`
+// and fails in unauthenticated CI environments.
+if (process.env.NODE_ENV !== 'production' && !process.env.CI) {
+  initOpenNextCloudflareForDev();
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
